@@ -62,62 +62,57 @@ public enum Nature {
 	
 	public static Nature fromString(String n)
 	{
-		Nature nat = Nature.Hardy;
-		switch(n)
-		{
-			case "Hardy":	nat = Nature.Hardy;
-							break;
-			case "Docile":	nat = Nature.Docile;
-							break;
-			case "Serious":	nat = Nature.Serious;
-							break;
-			case "Bashful":	nat = Nature.Bashful;
-							break;
-			case "Quirky":	nat = Nature.Quirky;
-							break;
-			case "Lonely":	nat = Nature.Lonely;
-							break;
-			case "Brave":	nat = Nature.Brave;
-							break;
-			case "Adamant":	nat = Nature.Adamant;
-							break;
-			case "Naughty":	nat = Nature.Naughty;
-							break;
-			case "Bold":	nat = Nature.Bold;
-							break;
-			case "Relaxed":	nat = Nature.Relaxed;
-							break;
-			case "Impish":	nat = Nature.Impish;
-							break;
-			case "Lax":		nat = Nature.Lax;
-							break;
-			case "Modest":	nat = Nature.Modest;
-							break;
-			case "Mild":	nat = Nature.Mild;
-							break;
-			case "Quiet":	nat = Nature.Quiet;
-							break;
-			case "Rash":	nat = Nature.Rash;
-							break;
-			case "Calm":	nat = Nature.Calm;
-							break;
-			case "Gentle":	nat = Nature.Gentle;
-							break;
-			case "Sassy":	nat = Nature.Sassy;
-							break;
-			case "Careful":	nat = Nature.Careful;
-							break;
-			case "Timid":	nat = Nature.Timid;
-							break;
-			case "Hasty":	nat = Nature.Hasty;
-							break;
-			case "Jolly":	nat = Nature.Jolly;
-							break;
-			case "Naive":	nat = Nature.Naive;
-							break;
-			case "":		nat = Nature.Hardy;
-							break;
-		}
-		return nat;
+		//I didn't want to have to write 50000 if statements because jaycode but oh well.
+			if(n.toLowerCase().startsWith("har"))
+				return Nature.Hardy;
+			else if(n.toLowerCase().startsWith("d"))
+				return Nature.Docile;
+			else if(n.toLowerCase().startsWith("se"))
+				return Nature.Serious;
+			else if(n.toLowerCase().startsWith("ba"))
+				return Nature.Bashful;
+			else if(n.toLowerCase().startsWith("quir"))
+				return Nature.Quirky;
+			else if(n.toLowerCase().startsWith("l"))
+				return Nature.Lonely;
+			else if(n.toLowerCase().startsWith("br"))
+				return Nature.Brave;
+			else if(n.toLowerCase().startsWith("a"))
+				return Nature.Adamant;
+			else if(n.toLowerCase().startsWith("nau"))
+				return Nature.Naughty;
+			else if(n.toLowerCase().startsWith("bo"))
+				return Nature.Bold;
+			else if(n.toLowerCase().startsWith("r"))
+				return Nature.Relaxed;
+			else if(n.toLowerCase().startsWith("i"))
+				return Nature.Impish;
+			else if(n.toLowerCase().startsWith("l"))
+				return Nature.Lax;
+			else if(n.toLowerCase().startsWith("mo"))
+				return Nature.Modest;
+			else if(n.toLowerCase().startsWith("mi"))
+				return Nature.Mild;
+			else if(n.toLowerCase().startsWith("qui"))
+				return Nature.Quiet;
+			else if(n.toLowerCase().startsWith("r"))
+				return Nature.Rash;
+			else if(n.toLowerCase().startsWith("cal"))
+				return Nature.Calm;
+			else if(n.toLowerCase().startsWith("g"))
+				return Nature.Gentle;
+			else if(n.toLowerCase().startsWith("s"))
+				return Nature.Sassy;
+			else if(n.toLowerCase().startsWith("c"))
+				return Nature.Careful;
+			else if(n.toLowerCase().startsWith("t"))
+				return Nature.Timid;
+			else if(n.toLowerCase().startsWith("h"))
+				return Nature.Hasty;
+			else if(n.toLowerCase().startsWith("j"))
+				return Nature.Jolly;
+			else if(n.toLowerCase().startsWith("n"))
+				return Nature.Naive;
+		else return Nature.Hardy;
 	}
 }

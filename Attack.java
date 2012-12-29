@@ -10,8 +10,8 @@ import java.awt.Point;
 public class Attack extends Action {
 	public Move move;
 	
-	private Pokemon attacker;
-	private Pokemon defender;
+	public Pokemon attacker;
+	public Pokemon defender;
 	
 	public Attack(Move m, Pokemon attack, Pokemon defend)
 	{
@@ -42,6 +42,17 @@ public class Attack extends Action {
 		}
 		else
 			move = m;
+	}
+	
+	public int deploy()
+	{
+		//Send next Attack to Showdown.
+		//TODO: Showdown hookup.
+		if(GeniusectAI.showdown == null)
+		{
+			return defender.onNewAttack(this);
+		}
+		else return 0;
 	}
 	
 	public void defenderSwap(Pokemon newDefend)

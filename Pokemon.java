@@ -137,14 +137,9 @@ public class Pokemon {
 		else return change.switchTo;
 	}
 	
-	public int onNewTurn(Action d)
+	public int onNewTurn()
 	{
-		if(hpPercent > 0)
-		{
-			if(d instanceof Attack)
-				return onNewAttack((Attack)d);
-		}
-		else
+		if(hpPercent <= 0)
 		{
 			onDie();
 		}
@@ -156,6 +151,8 @@ public class Pokemon {
 		//Called when predicting future events.
 		//Whereas the method below takes the moves that THIS Pokemon did, this method takes a move the OTHER Pokemon did.
 		//It returns the amount of damage done in this turn.
+		if(!GeniusectAI.simulating)
+			team.team[id] = this;
 		int preHP = hpPercent;
 		damage(a);
 		for(int i = 0; i < effects.size(); i++)
@@ -301,10 +298,25 @@ public class Pokemon {
 	{
 		//Adjust our EV spread.
 		evsLeft = 510;
+		evs = new int[6];
 		for(int i = 0; i < evs.length; i++)
 		{
-			evs[i] = 0;
 			adjustEVs(i,newEVs[i]);
+		}
+	}
+	
+	public void adjustEVsNoCheck(int[] newEVs)
+	{
+		evs = newEVs;
+		for(int index = 0; index > evs.length; index++)
+		{
+			evsLeft -= evs[index];
+			Pokequations.calculateStat(Stat.fromInt(index),this);
+			if(Stat.fromInt(index) == Stat.HP)
+			{
+				fullHP = stats[Stat.HP.toInt()];
+				percentToHP();
+			}
 		}
 	}
 	
@@ -314,11 +326,12 @@ public class Pokemon {
 		{
 			stats[Stat.HP.toInt()] = fullHP;
 		}
-		evsLeft += evs[index];
+		evsLeft += (evs[index] - newEV);
 		int check = evsLeft - newEV;
+		System.err.println(check);
 		if(check < 0)
 		{
-			GeniusectAI.print("EV spread is invalid!");
+			System.err.println("EV spread is invalid!");
 			return;
 		}
 		evs[index] = newEV;

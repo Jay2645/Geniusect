@@ -19,7 +19,10 @@ public class Change extends Action {
 	{
 		//Send next Pokemon to Showdown.
 		//TODO: Showdown hookup.
-		switchTo.onSendOut();
+		if(GeniusectAI.showdown == null)
+		{
+			switchTo.onSendOut();
+		}
 	}
 	
 	public static int calculateSwitchDamagePercent(Pokemon change)

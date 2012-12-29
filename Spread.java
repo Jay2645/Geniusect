@@ -13,19 +13,14 @@ public class Spread extends Pokemon {
 	{
 		clone(p);
 		team.team[id] = this;
+		int[] evAdjust = evs;
+		adjustEVsNoCheck(evAdjust);
 		improbable = recheck;
 	}
 	
 	public Spread(Pokemon p, double prob, int encountered)
 	{
-		name = p.name;
-		item = p.item;
-		level = p.level;
-		ability = p.ability;
-		nature = p.nature;
-		evs = p.evs;
-		moveset = p.moveset;
-		lead = p.lead;
+		clone(p);
 		if(lead)
 			probabilityLead = prob;
 		else
