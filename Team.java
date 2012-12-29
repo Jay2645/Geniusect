@@ -7,16 +7,16 @@ package geniusect;
 
 public class Team {
 	public Team(){}
-	public Team(String importable)
+	public Team(String input)
 	{
 		//TODO: Mark end of one importable and beginning of another.
-		//int importableLength = 6;
-		//for(int i = 0; i < importableLength; i++)
-		//{
+		String[] importable = input.split("\n\n", 6);
+		for(int i = 0; i < importable.length; i++)
+		{
 			@SuppressWarnings("unused")
-			Spread spread = new Spread(addPokemon(Pokemon.loadFromText(importable, this)), false);
+			Spread spread = new Spread(addPokemon(Pokemon.loadFromText(importable[i], this)), false);
 			//TODO: Lookup GA data using specified Spread.
-		//}
+		}
 	}
 	
 	public Pokemon[] team = new Pokemon[6];

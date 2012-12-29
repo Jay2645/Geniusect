@@ -18,7 +18,7 @@ public class Attack extends Action {
 		name = m.name;
 		attacker = attack;
 		defender = defend;
-		if(m.disabled || m.name.equalsIgnoreCase("struggle"))
+		if(m.disabled || m.name.toLowerCase().startsWith("struggle"))
 		{
 			//Double-check to make sure this is a legal move.
 			Move[] newSet = new Move[4];
@@ -35,7 +35,7 @@ public class Attack extends Action {
 			}
 			if(foundEnabledMove)
 				move = Pokequations.bestMove(attacker, defender, newSet);
-			else if(m.name.equalsIgnoreCase("struggle"))
+			else if(m.name.toLowerCase().startsWith("struggle"))
 				move = m;
 			else
 				move = new Move("struggle", attack);

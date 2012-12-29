@@ -108,7 +108,7 @@ public class Spread extends Pokemon {
 			GeniusectAI.print("Could not mark "+name+" as the active Pokemon!");
 		if(team == GeniusectAI.us)
 		{
-			if(name.equalsIgnoreCase("wobbuffet") || name.equalsIgnoreCase("wynaut"))
+			if(name.toLowerCase().startsWith("wobbuffet") || name.toLowerCase().startsWith("wynaut"))
 			{
 				GeniusectAI.setGeneric();
 			}

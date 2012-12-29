@@ -18,6 +18,6 @@ public class Test  {
        
         showdown.login();        
         */
-    	GeniusectAI.battleStart("Zapdos @ Leftovers \nTrait: Pressure \nEVs: 252 SDef / 252 HP / 4 SAtk \nCalm Nature \n- Heat Wave \n- Roost \n- Thunderbolt \n- Drill Peck");
+    	GeniusectAI.battleStart("Magikarp @ Air Balloon\nTrait: Swift Swim\nEVs: 252 Spd / 252 Atk / 4 HP\nAdamant Nature\n- Splash\n- Flail\n- Bounce\n- Tackle\n\nWobbuffet @ Leftovers\nTrait: Shadow Tag \nEVs: 200 Def / 56 SpD / 252 Spe \nTimid Nature (+Spe, -Atk) \n- Encore \n- Counter \n- Mirror Coat \n- Destiny Bond");
     }
 }

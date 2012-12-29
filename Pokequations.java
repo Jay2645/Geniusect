@@ -211,7 +211,7 @@ public class Pokequations {
 		return (int)Math.round(stat*adjust);
 	}
 	
-	public static Move bestMove(Pokemon attacker, Pokemon defender, Move enemyMove, int turnsUntilDead)
+	public static Move bestMove(Pokemon attacker, Pokemon defender, Move enemyMove)
 	{
 		//Proper calculation for Wobbuffet, Wynaut, etc.
 		boolean foundMove = false;
@@ -220,16 +220,28 @@ public class Pokequations {
 			if(attacker.moveset[i] == null || attacker.moveset[i].disabled)
 				continue;
 			foundMove = true;
+			int turnsUntilDead = turnsToKill(attacker.hpPercent, enemyMove.getProjectedPercent(attacker).y + attacker.moveset[i].recoilPercent);
 			if(turnsUntilDead > 1)
 			{
-				if(attacker.moveset[i].name.equalsIgnoreCase("counter") && !enemyMove.special || attacker.moveset[i].name.equalsIgnoreCase("mirror coat") && enemyMove.special)
+				if(attacker.moveset[i].name.toLowerCase().startsWith("counter") && !enemyMove.special || attacker.moveset[i].name.toLowerCase().startsWith("mirror coat") && enemyMove.special)
 				{
-					attacker.moveset[i].getProjectedDamage(defender).x = enemyMove.getProjectedDamage(attacker).x * 2;
-					attacker.moveset[i].getProjectedDamage(defender).y = enemyMove.getProjectedDamage(attacker).y * 2;
+					int projectedDamageLower = enemyMove.getProjectedDamage(attacker).x * 2;
+					int projectedDamageUpper = enemyMove.getProjectedDamage(attacker).y * 2;
+					attacker.moveset[i].getProjectedDamage(defender).x = projectedDamageLower;
+					attacker.moveset[i].getProjectedDamage(defender).y = projectedDamageUpper;
+					attacker.moveset[i].getProjectedPercent(defender).x = defender.hpToPercent(projectedDamageLower);
+					attacker.moveset[i].getProjectedPercent(defender).y = defender.hpToPercent(projectedDamageUpper);
+				}
+				else if(attacker.moveset[i].name.toLowerCase().startsWith("counter") && enemyMove.special || attacker.moveset[i].name.toLowerCase().startsWith("mirror coat") && !enemyMove.special)
+				{
+					attacker.moveset[i].getProjectedDamage(defender).x = 0;
+					attacker.moveset[i].getProjectedDamage(defender).y = 0;
+					attacker.moveset[i].getProjectedPercent(defender).x = 0;
+					attacker.moveset[i].getProjectedPercent(defender).y = 0;
 				}
 				if(turnsUntilDead == 2 && !attacker.isFasterThan(defender))
 				{
-					if(attacker.moveset[i].name.equalsIgnoreCase("destiny bond"))
+					if(attacker.moveset[i].name.toLowerCase().startsWith("destiny bond"))
 					{
 						attacker.moveset[i].getProjectedDamage(defender).x = Integer.MAX_VALUE - 1;
 						attacker.moveset[i].getProjectedDamage(defender).y = Integer.MAX_VALUE;
@@ -237,7 +249,7 @@ public class Pokequations {
 						attacker.moveset[i].getProjectedPercent(defender).y = 100;
 					}
 				}
-				else if(attacker.moveset[i].name.equalsIgnoreCase("destiny bond"))
+				else if(attacker.moveset[i].name.toLowerCase().startsWith("destiny bond"))
 				{
 					attacker.moveset[i].getProjectedDamage(defender).x = 0;
 					attacker.moveset[i].getProjectedDamage(defender).y = 0;
@@ -247,14 +259,14 @@ public class Pokequations {
 			}
 			else
 			{
-				if(attacker.moveset[i].name.equalsIgnoreCase("counter")|| attacker.moveset[i].name.equalsIgnoreCase("mirror coat"))
+				if(attacker.moveset[i].name.toLowerCase().startsWith("counter")|| attacker.moveset[i].name.toLowerCase().startsWith("mirror coat"))
 				{
 					attacker.moveset[i].getProjectedDamage(defender).x = 0;
 					attacker.moveset[i].getProjectedDamage(defender).y = 0;
 					attacker.moveset[i].getProjectedPercent(defender).x = 0;
 					attacker.moveset[i].getProjectedPercent(defender).y = 0;
 				}
-				else if(turnsUntilDead == 1 && attacker.isFasterThan(defender) && attacker.moveset[i].name.equalsIgnoreCase("destiny bond"))
+				else if(turnsUntilDead == 1 && attacker.isFasterThan(defender) && attacker.moveset[i].name.toLowerCase().startsWith("destiny bond"))
 				{
 					attacker.moveset[i].getProjectedDamage(defender).x = Integer.MAX_VALUE - 1;
 					attacker.moveset[i].getProjectedDamage(defender).y = Integer.MAX_VALUE;
@@ -275,15 +287,26 @@ public class Pokequations {
 	
 	public static Move bestMove(Pokemon attacker, Pokemon defender, Move[] moveset)
 	{
-		Point damage = new Point(Integer.MIN_VALUE, Integer.MAX_VALUE);
+		Point damage = new Point(Integer.MIN_VALUE, Integer.MIN_VALUE + 1);
 		Move use = null;
 		for(int i = 0; i < moveset.length; i++)
 		{
 			if(moveset[i] == null || moveset[i].disabled)
 			{
+				System.err.println(moveset[i]+" is null or disabled!");
 				continue;
 			}
-			Point moveDamage = calculateDamage(attacker, moveset[i],defender);
+			if(use == null)
+			{
+				use = moveset[i];
+				damage = calculateDamage(attacker, moveset[i],defender);
+				continue;
+			}
+			Point moveDamage;
+			if(moveset[i].name.toLowerCase().startsWith("counter") || moveset[i].name.toLowerCase().startsWith("mirror coat"))
+				moveDamage = moveset[i].getProjectedDamage(defender);
+			else
+				moveDamage = calculateDamage(attacker, moveset[i],defender);
 			if(moveDamage.y > damage.y)
 			{
 				damage=moveDamage;
@@ -316,13 +339,26 @@ public class Pokequations {
 	
 	public static Action miniMax(AINode node, int depth)
 	{
-		depth = 16;
+		if(node.isRoot)
+		{
+			if(node.result == null)
+			{
+				return checkChildren(node, depth);
+			}
+			else return node.result.decision;
+		}
 		//Calculates all worst-case scenarios, then returns steps to minimize losses.
 		if(depth <= 0 || node.children == null)
 		{
-			//printParentRecursive(node);
+			System.err.println(node.decision.name+"'s children "+node.children+" == null OR 0 == "+ depth+". Parent: "+node.parent.decision);
+			printParentRecursive(node);
 			return node.decision;
 		}
+		return checkChildren(node, depth);
+	}
+	
+	private static Action checkChildren(AINode node, int depth)
+	{
 		/*int alpha = -node.player * Integer.MAX_VALUE;
 		for(int i = 0; i < node.children.length; i++)
 		{
@@ -354,12 +390,11 @@ public class Pokequations {
 		{
 			Action miniResult = miniMax(node.children[i], depth - 1);
 			int miniScore = -miniResult.score;
-			if(miniResult.name.equalsIgnoreCase("Heat Wave"))
-				System.err.println("Heat Wave has a score of "+miniResult+", we need to beat"+alpha+".");
 			if(miniScore > alpha)
 			{
-				System.out.println(node.decision.name+" has a score of "+miniResult+", to be achieved in "+node.count+" turns.");
+				System.out.println(node.children[i].decision.name+" has a score of "+miniResult+", to be achieved in "+node.count+" turns.");
 				decision = miniResult;
+				node.result = node.children[i];
 				alpha = miniScore;
 			}
 		}

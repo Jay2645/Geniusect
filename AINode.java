@@ -22,6 +22,7 @@ public class AINode
 	public int player = 1; //Whose turn is it? (1 is the person performing the Minimax calc; -1 is the enemy).
 	
 	public boolean createChildren = true;
+	public boolean isRoot = false;
 	
 	public AINode(Pokemon[] us, Pokemon[] them, Pokemon usUsing, Pokemon themUsing) 
 	{
@@ -29,6 +30,7 @@ public class AINode
 		enemyTeam = them;
 		ourActive = usUsing;
 		enemyActive = themUsing;
+		isRoot = true;
 	}
 	
 	public AINode(AINode p)
@@ -69,7 +71,7 @@ public class AINode
 			child.enemyActive = new Pokemon(ourActive);
 		if(child.ourActive.getHealth() <= 0)
 		{
-			System.err.println(child.ourActive.name+" has died after "+(count)+" turns!");
+			System.err.println(child.ourActive.name+" has died after "+(count / 2)+" turns!");
 			child.ourActive.onDie();
 			Pokemon change = Change.bestCounter(child.ourTeam, ourActive);
 			if(change == null)

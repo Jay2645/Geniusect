@@ -52,9 +52,9 @@ public class SQLHandler {
 					m.type = Type.fromSQL(Integer.parseInt(rs.getString("type")));
 					m.power = Integer.parseInt(rs.getString("power"));
 					String moveCategory = rs.getString("category");
-					if(moveCategory.equalsIgnoreCase("special"))
+					if(moveCategory.toLowerCase().startsWith("special"))
 						m.special = true;
-					else if(moveCategory.equalsIgnoreCase("status"))
+					else if(moveCategory.toLowerCase().startsWith("status"))
 						m.status = true;
 					m.accuracy = Integer.parseInt(rs.getString("accuracy"));
 					m.pp = Integer.parseInt(rs.getString("pp"));

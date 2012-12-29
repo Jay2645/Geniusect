@@ -52,7 +52,7 @@ public class Move {
 	{
 		name = n;
 		user = p;
-		if(name.equalsIgnoreCase("Struggle"))
+		if(name.toLowerCase().startsWith("Struggle"))
 		{
 			pp = Integer.MAX_VALUE;
 			power = 50;
@@ -73,7 +73,7 @@ public class Move {
 		}
 		else
 		{
-			if(enemy.ability.name.equalsIgnoreCase("pressure"))
+			if(enemy.ability.name.toLowerCase().startsWith("pressure"))
 				pp -=2;
 			else
 				pp--;
@@ -92,7 +92,7 @@ public class Move {
 	
 	public boolean withinExpectedRange(int damage, Pokemon p, boolean wasCrit)
 	{
-		if(wasCrit && user.ability.name.equalsIgnoreCase("sniper"))
+		if(wasCrit && user.ability.name.toLowerCase().startsWith("sniper"))
 		{
 			damage /= 3;
 		}

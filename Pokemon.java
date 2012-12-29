@@ -123,7 +123,7 @@ public class Pokemon {
 		}
 		if(!entered)
 			GeniusectAI.print("Could not mark "+name+" as the active Pokemon!");
-		if(team == GeniusectAI.us && name.equalsIgnoreCase("wobbuffet") || name.equalsIgnoreCase("wynaut"))
+		if(team == GeniusectAI.us && name.toLowerCase().startsWith("wobbuffet") || name.toLowerCase().startsWith("wynaut"))
 		{
 			GeniusectAI.setGeneric();
 		}
@@ -140,7 +140,7 @@ public class Pokemon {
 		}
 		resetBoosts();
 		effects.clear();
-		if(team == GeniusectAI.us && name.equalsIgnoreCase("wobbuffet") || team == GeniusectAI.us && name.equalsIgnoreCase("wynaut"))
+		if(team == GeniusectAI.us && name.toLowerCase().startsWith("wobbuffet") || team == GeniusectAI.us && name.toLowerCase().startsWith("wynaut"))
 		{
 			GeniusectAI.setMiniMax();
 		}
@@ -170,13 +170,13 @@ public class Pokemon {
 		//Keeps track of what moves THIS Pokemon has done (if unknown) and what damage they did to the enemy.
 		for(int i = 0; i < moveset.length; i++)
 		{
-			if(moveset[i].name.equalsIgnoreCase("Struggle") && !n.equalsIgnoreCase("Struggle"))
+			if(moveset[i].name.toLowerCase().startsWith("Struggle") && !n.toLowerCase().startsWith("Struggle"))
 			{
 				moveset[i] = new Move(n,this);
 				moveset[i].onMoveUsed(enemy, damageDone, crit);
 				break;
 			}
-			else if(moveset[i].name.equalsIgnoreCase(n))
+			else if(moveset[i].name.toLowerCase().startsWith(n))
 			{
 				moveset[i].onMoveUsed(enemy, damageDone, crit);
 				break;
@@ -202,7 +202,6 @@ public class Pokemon {
 		hpPercent -= damagePercent;
 		if(hpPercent < 0)
 			hpPercent = 0;
-		System.out.println("New percent for "+name+": "+hpPercent+"%.");
 		alive = hpPercent > 0;
 		return alive;
 	}
@@ -332,6 +331,11 @@ public class Pokemon {
 		return hpPercent;
 	}
 	
+	public int hpToPercent(int hp)
+	{
+		return (int)Math.round((hp / fullHP) * 100);
+	}
+	
 	public int percentToHP()
 	{
 		stats[Stat.HP.toInt()] = (int)Math.round(fullHP * (hpPercent / 100));
@@ -353,9 +357,6 @@ public class Pokemon {
 	 * Static methods below here.
 	 * 
 	 */
-	
-	
-	
 	
 	public static Pokemon loadFromText(String importable, Team t)
 	{
