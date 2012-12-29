@@ -455,7 +455,28 @@ public class Pokemon {
 		{
 			found = new Pokemon();
 			found.id = count;
-			found.name = importable.substring(m.start(1), m.end(1));
+			
+			// name: Hard To Please (Ninetales) (F)
+			String tempname = importable.substring(m.start(1), m.end(1));
+			if (tempname.contains("("))
+			{
+				Pattern nameP = Pattern.compile(" \\((.+?)\\)");
+				Matcher nameM = nameP.matcher(tempname);
+				nameM.find();
+				if (nameM.end(1) - nameM.start(1) > 1)
+				{
+					found.name = nameM.group(1);
+				}
+				else
+				{
+					found.name = tempname.substring(0, nameM.start(1) - 2);
+				}
+			}
+			else
+			{
+				found.name = tempname;
+			}
+			
 			found.item = new Item(importable.substring(m.start(2), m.end(2)));
 			found.ability = new Ability(importable.substring(m.start(3), m.end(3)));
 			found.nature = Nature.fromString(importable.substring(m.start(4), m.end(4)));
