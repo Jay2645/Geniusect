@@ -12,9 +12,24 @@ public class Action
 	boolean crit = false;
 	public int score = 0; //The minimax score for this action.
 	
+	public void sendToShowdown(AINode node)
+	{
+		if(this instanceof Change)
+		{
+			Change c = (Change)this;
+			node.ourActive = c.switchTo;
+			c.deploy();
+		}
+		else if(this instanceof Attack)
+		{
+			Attack a = (Attack) this;
+			a.defender = node.ourActive;
+			node.damageDoneToUs += a.deploy();
+		}
+	}
+	
 	public void sendToShowdown()
 	{
-		//TODO: Showdown hookup.
 		if(this instanceof Change)
 		{
 			Change c = (Change)this;
@@ -22,7 +37,9 @@ public class Action
 		}
 		else if(this instanceof Attack)
 		{
-			
+			Attack a = (Attack) this;
+			a.defender.team.team[a.defender.id] = a.defender;
+			a.deploy();
 		}
 		if(!sayOnSend.equals(""))
 		{

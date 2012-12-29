@@ -43,9 +43,112 @@ public class GeniusectAI {
 	public static int winCount = 0;
 	public static int lossCount = 0;
 	
+	
+	
+	private static String importableUs =	"Ninetales @ Leftovers" +
+											"\nTrait: Drought" +
+											"\nEVs: 252 HP / 252 SAtk / 4 SDef" +
+											"\nModest Nature" +
+											"\n- Sunny Day" +
+											"\n- SolarBeam" +
+											"\n- Overheat" +
+											"\n- Power Swap" +
+											"\n" +
+											"\nTangrowth @ Leftovers" +
+											"\nTrait: Chlorophyll" +
+											"\nEVs: 252 HP / 252 Spd / 4 Atk" +
+											"\nNaive Nature" +
+											"\n- Growth" +
+											"\n- Power Whip" +
+											"\n- Hidden Power" +
+											"\n- Earthquake" +
+											"\n" +
+											"\nDugtrio @ Focus Sash" +
+											"\nTrait: Arena Trap" +
+											"\nEVs: 252 Spd / 4 Def / 252 Atk" +
+											"\nJolly Nature" +
+											"\n- Earthquake" +
+											"\n- Sucker Punch" +
+											"\n- Stone Edge" +
+											"\n- Reversal" +
+											"\n" +
+											"\nHeatran @ Choice Scarf" +
+											"\nTrait: Flash Fire" +
+											"\nEVs: 252 Spd / 252 SAtk / 4 HP" +
+											"\nModest Nature" +
+											"\n- Overheat" +
+											"\n- SolarBeam" +
+											"\n- Earth Power" +
+											"\n- Hidden Power" +
+											"\n" +
+											"\nDragonite @ Lum Berry" +
+											"\nTrait: Multiscale" +
+											"\nEVs: 252 Spd / 4 HP / 252 Atk" +
+											"\nAdamant Nature" +
+											"\n- Dragon Dance" +
+											"\n- Fire Punch" +
+											"\n- ExtremeSpeed" +
+											"\n- Outrage" +
+											"\n" +
+											"\nDonphan @ Leftovers" +
+											"\nTrait: Sturdy" +
+											"\nEVs: 252 SDef / 28 HP / 228 Def" +
+											"\nCareful Nature" +
+											"\n- Rapid Spin" +
+											"\n- Toxic" +
+											"\n- Stealth Rock" +
+											"\n- Earthquake";
+	
+			
+	private static String importableEnemy =	"Forretress @ Leftovers " +
+											"\nTrait: Sturdy" +
+											"\nEVs: 252 HP / 4 Atk / 252 Def" +
+											"\nRelaxed Nature" +
+											"\n- Toxic Spikes" +
+											"\n- Gyro Ball" +
+											"\n- Stealth Rock" +
+											"\n- Rapid Spin" +
+											"\n" +
+											"\nGarchomp @ Choice Scarf" +
+											"\nTrait: Rough Skin" +
+											"\nEVs: 4 HP / 252 Atk / 252 Spd" +
+											"\nAdamant Nature" +
+											"\n- Outrage" +
+											"\n- Earthquake" +
+											"\n- Stone Edge" +
+											"\n- Brick Break" +
+											"\n" +
+											"\nChansey @ Eviolite" +
+											"\nTrait: Natural Cure" +
+											"\nEVs: 248 HP / 252 Def / 8 Spd" +
+											"\nBold Nature" +
+											"\n- Toxic" +
+											"\n- Protect" +
+											"\n- Wish" +
+											"\n- Seismic Toss" +
+											"\n" +
+											"\nConkeldurr @ Leftovers" +
+											"\nTrait: Guts" +
+											"\nEVs: 120 HP / 252 Atk / 136 SDef" +
+											"\nAdamant Nature" +
+											"\n- Bulk Up" +
+											"\n- Drain Punch" +
+											"\n- Payback" +
+											"\n- Mach Punch" +
+											"\n" +
+											"\nHeatran @ Choice Scarf" +
+											"\nTrait: Flash Fire" +
+											"\nEVs: 6 HP / 252 SAtk / 252 Spd" +
+											"\nModest Nature" +
+											"\n- Overheat" +
+											"\n- Earth Power" +
+											"\n- Hidden Power" +
+											"\n- Dragon Pulse";
+	
+	
 	public static int turnsToSimulate = 100; //How many turns we simulate, if Showdown is not running?
 	
-	public static void battleStart(String load)
+	public static void battleStart()
 	{
 		turnsToSimulate *= 2;
 		battleCount++;
@@ -55,30 +158,18 @@ public class GeniusectAI {
 		print("Geniusect version "+version+" has entered a battle. Session battle count: "+battleCount);
 		print("Hello! You are playing against an AI. Occasionally I might get hung up while making a move.");
 		print("If you suspect I'm not responding, feel free to hit 'Kick Inactive Player.'");
-		us = new Team(load, teamID);
-		enemy = new Team(enemyID);
+		us = new Team(importableUs, teamID);
+		enemy = new Team(importableEnemy, enemyID);
 		//TODO: If we can choose lead, do so and log names of all enemy Pokemon.
-		String pokemonName = "Genesect"; //TODO: Replace with the name of the enemy lead.
-		enemy.addPokemon(pokemonName);
 		Pokemon.active[teamID].changeEnemy(Pokemon.active[enemyID]);
 		Pokemon.active[enemyID].changeEnemy(Pokemon.active[teamID]);
-		Pokemon.active[enemyID].moveset[0] = new Move("U-Turn", Pokemon.active[enemyID]);
-		Pokemon.active[enemyID].moveset[1] = new Move("Ice Beam", Pokemon.active[enemyID]);
-		Pokemon.active[enemyID].moveset[2] = new Move("Thunderbolt", Pokemon.active[enemyID]);
-		Pokemon.active[enemyID].moveset[3] = new Move("Fire Blast", Pokemon.active[enemyID]);
-		for(int i = 0; i < enemy.team.length; i++)
-		{
-			if(enemy.team[i].name.equalsIgnoreCase(pokemonName))
-			{
-				Pokemon.active[enemyID] = enemy.team[i];
-				break;
-			}
-		}
 		newTurn();
 	}
 	
 	public static void newTurn()
 	{
+		if(!playing)
+			return;
 		turnCount++;		
 		System.err.println("\n\n\n*******************************TEAM "+teamID+", TURN "+(turnCount / 2)+"*******************************");
 		System.err.println("**************************ACTIVE POKEMON: "+Pokemon.active[teamID].name+"**************************");
@@ -127,12 +218,14 @@ public class GeniusectAI {
 			Team t = us;
 			us = enemy;
 			enemy = t;
-			Pokemon.active[teamID].onNewTurn(nextTurn);
 			if(playing)
 			{
 				turnsToSimulate--;
 				if(turnsToSimulate > 0)
+				{
+					Pokemon.active[teamID].onNewTurn();
 					newTurn();
+				}
 			}
 		}
 	}
@@ -181,7 +274,7 @@ public class GeniusectAI {
 			lossCount++;
 			print("GG. :(");
 		}
-		print("Geniusect win/loss ratio: "+winCount +" : "+ lossCount);
+		print("Geniusect win : loss ratio is "+winCount +" : "+ lossCount);
 		if(showdown != null)
 			showdown.surrender();
 	}
@@ -263,6 +356,7 @@ public class GeniusectAI {
 	public static void printEnemy()
 	{
 		print("Here's what I know about the enemy's "+Pokemon.active[enemyID].name);
+		print("It has "+Pokemon.active[enemyID].hpPercent+"% HP.");
 		print("It is level "+Pokemon.active[enemyID].level);
 		print("Its types are "+Pokemon.active[enemyID].types[0]+" and "+Pokemon.active[enemyID].types[1]);
 		print("Its nature is "+Pokemon.active[enemyID].nature.toString());

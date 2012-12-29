@@ -52,19 +52,7 @@ public class AINode
 		child.count = count + 1;
 		if(decision != null)
 		{
-			if(decision instanceof Attack)
-			{
-				Attack attack = (Attack) decision;
-				child.damageDoneToUs += child.ourActive.onNewTurn(attack);
-				child.enemyActive = new Pokemon(ourActive);
-			}
-			else if(decision instanceof Change)
-			{
-				Change change = (Change) decision;
-				child.enemyActive = new Pokemon(change.switchTo);
-			}
-			else
-				child.enemyActive = new Pokemon(ourActive);
+			decision.sendToShowdown(child);
 			Pokequations.printParentRecursive(this);
 		}
 		else
