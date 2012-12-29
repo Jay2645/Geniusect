@@ -72,11 +72,9 @@ public class AINode
 		if(child.ourActive.getHealth() <= 0)
 		{
 			System.err.println(child.ourActive.name+" has died after "+(count / 2)+" turns!");
-			child.ourActive.onDie();
-			Pokemon change = Change.bestCounter(child.ourTeam, ourActive);
+			Pokemon change = child.ourActive.onDie();
 			if(change == null)
 			{
-				System.err.println(ourActive.name+" wins the game!");
 				child.createChildren = false;
 				child.damageDoneToUs = Integer.MAX_VALUE;
 				child.count = 0;
@@ -87,7 +85,6 @@ public class AINode
 			else
 			{
 				child.ourActive = new Pokemon(change);
-				child.ourActive.onSendOut();
 			}
 		}
 		else

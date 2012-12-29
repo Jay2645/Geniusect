@@ -6,25 +6,32 @@
 package geniusect;
 
 public class Team {
-	public Team(){}
-	public Team(String input)
+	public Team(int id)
 	{
+		teamID = id;
+	}
+	public Team(String input, int id)
+	{
+		teamID = id;
 		//TODO: Mark end of one importable and beginning of another.
 		String[] importable = input.split("\n\n", 6);
 		for(int i = 0; i < importable.length; i++)
 		{
-			@SuppressWarnings("unused")
-			Spread spread = new Spread(addPokemon(Pokemon.loadFromText(importable[i], this)), false);
+			Spread spread = new Spread(Pokemon.loadFromText(importable[i], this,i), false);
 			//TODO: Lookup GA data using specified Spread.
+			addPokemon(spread);
 		}
 	}
 	
 	public Pokemon[] team = new Pokemon[6];
-	public Pokemon active;
+	public int teamID = -1;
+	public boolean hasInitialized = false;
 	
 	public Pokemon addPokemon(String s)
 	{
-		return addPokemon(new Pokemon(s, this));
+		Pokemon p = new Pokemon();
+		p.name = s;
+		return addPokemon(p);
 	}
 	public Pokemon addPokemon(Pokemon p)
 	{
@@ -34,33 +41,17 @@ public class Team {
 		{
 			if(team[i] == null)
 			{
+				//System.err.println("Adding "+p.name+" to team ID "+teamID);
+				if(p.team == null)
+					p = new Pokemon(p.name,this,i);
+				else p.id = i;
 				team[i] = p;
 				break;
 			}
-		}
-		return p;
-	}
-	
-	public void activePokemon(String activate)
-	{
-		//Adds Pokemon and marks them as active (on the battlefield).
-		activePokemon(new Pokemon(activate,this));
-	}
-	
-	public void activePokemon(Pokemon activate)
-	{
-		active = activate;
-		for(int i = 0; i < team.length; i++)
-		{
-			if(activate == team[i])
-			{
-				return;
-			}
-			else if(team[i] == null)
-			{
-				team[i] = activate;
+			if(team[i].name.equals(p.name))
 				break;
-			}
 		}
+		hasInitialized = true;
+		return p;
 	}
 }

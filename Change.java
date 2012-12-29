@@ -14,27 +14,35 @@ public class Change extends Action {
 		switchTo = changeTo;
 		name = changeTo.name;
 	}
-
-	public static int calculateSwitchDamage(Pokemon switcher)
+	
+	public void deploy()
 	{
-		int percent = calculateSwitchDamagePercent(switcher.hpToPercent());
-		return switcher.fullHP * (percent / 100);
+		//Send next Pokemon to Showdown.
+		//TODO: Showdown hookup.
+		switchTo.onSendOut();
 	}
 	
-	public static int calculateSwitchDamagePercent(int percent)
+	public static int calculateSwitchDamagePercent(Pokemon change)
 	{
+		//Returns the amount of entry hazard damage an incoming Pokemon will take.
+		int damage = 0;
 		//TODO: Calculate entry hazard damage.
-		return percent;
+		return damage;
 	}
 	
 	public static Pokemon bestCounter(Pokemon[] ourTeam, Pokemon enemy)
 	{
+		//Returns the best response to a threat.
 		int damage = Integer.MAX_VALUE;
 		Pokemon switcher = null;
 		for(int i = 0; i < ourTeam.length; i++)
 		{
-			if(ourTeam[i] != null && ourTeam[i].isAlive())
-				{
+			if(ourTeam[i] == null)
+				continue;
+			if(ourTeam[i].isAlive())
+			{
+				if(switcher == null)
+					switcher = ourTeam[i]; //Make sure we will always return something if at least one Pokemon is alive.
 				Move theirBestMove = Pokequations.bestMove(enemy,ourTeam[i]);
 				if(damage > theirBestMove.getProjectedPercent(ourTeam[i]).y)
 				{
@@ -48,6 +56,8 @@ public class Change extends Action {
 	
 	public static Pokemon bestChange(Pokemon us, Pokemon[] ourTeam, Pokemon enemy, Move predictedMove)
 	{
+		if(us.hasMove("Destiny Bond")) //Try to take opponent with us if we can.
+			return us;
 		int damageStayIn = Pokequations.calculateDamagePercent(enemy, predictedMove, us).y;
 		Pokemon change = us;
 		int predictedDamage = damageStayIn;
@@ -55,16 +65,24 @@ public class Change extends Action {
 		{
 			if(ourTeam[i] != null && ourTeam[i].isAlive() && ourTeam[i] != us)
 			{
-				int switchDamage = Pokequations.calculateDamagePercent(enemy, predictedMove, ourTeam[i]).y + calculateSwitchDamagePercent(ourTeam[i].hpPercent);
-				if(switchDamage < predictedDamage && change == us || switchDamage < predictedDamage && ourTeam[i].hpPercent - switchDamage > change.hpPercent - switchDamage)
+				int switchDamage = Pokequations.calculateDamagePercent(enemy, predictedMove, ourTeam[i]).y + calculateSwitchDamagePercent(ourTeam[i]);
+				if(change == us) //If we have not found someone to change to.
 				{
-					//Make sure that we won't take more damage switching in than we would by not.
-					Move secondTurnBestMove = Pokequations.bestMove(enemy, ourTeam[i]);
-					Move secondTurnOurBestMove = Pokequations.bestMove(ourTeam[i], enemy);
-					if(	secondTurnBestMove.getProjectedPercent(ourTeam[i]).y + switchDamage - ourTeam[i].hpPercent > 0 || 
-						secondTurnOurBestMove.getProjectedPercent(enemy).x - enemy.hpPercent <= 0 && ourTeam[i].isFasterThan(enemy))
+					if(us.hpPercent - predictedDamage <= 0) //If we predict that this next attack will kill us:
 					{
-						//Sanity check: We don't want to come in and get killed the next turn, unless we can OHKO the enemy.
+						change = ourTeam[i];
+						predictedDamage = switchDamage;
+					}
+					else if(switchDamage < predictedDamage && sanityCheck(ourTeam[i], enemy, switchDamage))
+					{	//A switch will take less damage by switching in and it's sane to come in:
+						change = ourTeam[i];
+						predictedDamage = switchDamage;
+					}
+				}
+				else
+				{
+					if(sanityCheck(ourTeam[i], enemy, switchDamage))
+					{
 						change = ourTeam[i];
 						predictedDamage = switchDamage;
 					}
@@ -74,5 +92,16 @@ public class Change extends Action {
 				continue;
 		}
 		return change;
+	}
+	
+	private static boolean sanityCheck(Pokemon saneSwitch, Pokemon enemy, int switchDamage)
+	{
+		//Sanity check: We don't want to come in and get killed the next turn, unless we can OHKO the enemy.
+		Move secondTurnBestMove = Pokequations.bestMove(enemy, saneSwitch);
+		Move secondTurnOurBestMove = Pokequations.bestMove(saneSwitch, enemy);
+		if(	secondTurnBestMove.getProjectedPercent(saneSwitch).y + switchDamage - saneSwitch.hpPercent > 0 || 
+			secondTurnOurBestMove.getProjectedPercent(enemy).x - enemy.hpPercent <= 0 && saneSwitch.isFasterThan(enemy))
+			return true;
+		return false;
 	}
 }

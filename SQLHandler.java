@@ -41,7 +41,6 @@ public class SQLHandler {
 		{
 			try
 			{
-				System.out.println("Fetching Pokemon learnset");
 				PreparedStatement s = conn.prepareStatement("SELECT type, power, accuracy, category, pp, target, move.desc FROM move WHERE name= ? ORDER BY name ASC");
 				s.setString(1, move);
 				s.executeQuery();
@@ -58,8 +57,8 @@ public class SQLHandler {
 						m.status = true;
 					m.accuracy = Integer.parseInt(rs.getString("accuracy"));
 					m.pp = Integer.parseInt(rs.getString("pp"));
-					m.target = rs.getString("target");
-					/*if(move.startsWith("Hidden Power"))
+					m.target = Target.fromString(rs.getString("target"));
+					/*if(move.startsWith("Hidden Power")) //TODO: Hidden Power calculation.
 						{
 						moveType = hiddenPower.get(1).toString();
 						movePower = hiddenPower.get(0).toString();

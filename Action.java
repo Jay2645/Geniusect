@@ -15,12 +15,24 @@ public class Action
 	public void sendToShowdown()
 	{
 		//TODO: Showdown hookup.
+		if(this instanceof Change)
+		{
+			Change c = (Change)this;
+			c.deploy();
+		}
+		else if(this instanceof Attack)
+		{
+			
+		}
 		if(!sayOnSend.equals(""))
 		{
 			GeniusectAI.print(sayOnSend);
 			sayOnSend = "";
 		}
-		GeniusectAI.lastTurnLogic();
+		if(GeniusectAI.showdown == null)
+		{
+			GeniusectAI.swapSides();
+		}
 	}
 	
 	public void say(String text)

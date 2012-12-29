@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 public class Pokemon {
 	public static Pokemon[] active = new Pokemon[2]; //Will need to adjust for double battles.
 	public String name;
+	public int id = -1;
 	public Item item;
 	public Team team;
 	public int level = 100;
@@ -29,7 +30,7 @@ public class Pokemon {
 	public ArrayList<Type> doubleResistances = new ArrayList<Type>();
 	public ArrayList<Type> immunities = new ArrayList<Type>();
 	
-	public Move[] moveset = {new Move("Struggle", this),new Move("Struggle", this), new Move("Struggle", this), new Move("Struggle", this)};
+	public Move[] moveset = {null,null,null,null};
 	
 	public int[] base = {0,0,0,0,0,0};
 	public int[] ivs = {31,31,31,31,31,31};
@@ -44,56 +45,24 @@ public class Pokemon {
 	public boolean lead = false; //Is this the lead?
 	protected boolean alive = true; //Is this Pokemon alive?
 	protected boolean canMove = true; //Can we move?
+	protected boolean canSwitch = true; //Can we switch?
+	protected boolean charged = false; //Is our move recharged?
 	protected Status status = Status.None; //What permanent status do we have (i.e. Poison, Burn, etc.)?
 	protected ArrayList<VolatileStatus> effects = new ArrayList<VolatileStatus>(); //What temporary status do we have (i.e. Confused, Taunt, etc.)?
 	protected Pokemon enemy;
 	
 	public Pokemon() {}
 	
-	public Pokemon(Pokemon clone)
+	public Pokemon(Pokemon p)
 	{
-		name = clone.name;
-		item = clone.item;
-		team = clone.team;
-		level = clone.level;
-		types = clone.types;
-		ability = clone.ability;
-		nature = clone.nature;
-		tier = clone.tier;
-		
-		quadrupleEffective = clone.quadrupleEffective;
-		superEffective = clone.superEffective;
-		resistances = clone.resistances;
-		doubleResistances = clone.doubleResistances;
-		immunities = clone.immunities;
-		
-		moveset[0] = new Move(clone.moveset[0]);
-		moveset[1] = new Move(clone.moveset[1]);
-		moveset[2] = new Move(clone.moveset[2]);
-		moveset[3] = new Move(clone.moveset[3]);
-		
-		base = clone.base;
-		ivs = clone.ivs;
-		evs = clone.evs;
-		stats = clone.stats;
-		boosts = clone.boosts;
-		boostedStats = clone.boostedStats;
-		fullHP = clone.fullHP;
-		hpPercent = clone.hpPercent;
-		evsLeft = clone.evsLeft;
-		
-		lead = clone.lead;
-		alive = clone.alive;
-		canMove = clone.canMove;
-		status = clone.status;
-		effects = clone.effects;
-		enemy = clone.enemy;
+		clone(p);
 	}
 	
-	public Pokemon(String n, Team t)
+	public Pokemon(String n, Team t, int i)
 	{
 		name = n;
 		team = t;
+		id = i;
 		query();
 	}
 	
@@ -103,7 +72,7 @@ public class Pokemon {
 		stats = Pokequations.calculateStat(this);
 		boostedStats = stats;
 		fullHP = boostedStats[Stat.HP.toInt()];
-		if(active[0] == null && active[1] == null || active[0] == null && active[1].team != this.team || active[0].team != this.team && active[1] == null)
+		if(active[team.teamID] == null)
 		{
 			onSendOut();
 		}
@@ -112,55 +81,88 @@ public class Pokemon {
 	public void onSendOut()
 	{
 		//Called when this Pokemon enters the battle.
-		boolean entered = false;
-		for(int i = 0; i < active.length; i++)
+		if(team.hasInitialized)
 		{
-			if(active[i] == null)
+			if(active[team.teamID] == null)
+				active[team.teamID] = this;
+			else if(active[team.teamID] != null && active[team.teamID] != this)
 			{
-				active[i] = this;
-				entered = true;
+				active[team.teamID].onWithdraw();
+				active[team.teamID] = this;
+			}
+			if(team.teamID == 0)
+				enemy = active[1];
+			else
+				enemy = active[0];
+		}
+		else
+		{
+			if(active[team.teamID] == null)
+			{
+				//Make sure our enemy is defined.
+				if(team.teamID == 0)
+					enemy = active[1];
+				else
+					enemy = active[0];
+				active[team.teamID] = this;
 			}
 		}
-		if(!entered)
-			GeniusectAI.print("Could not mark "+name+" as the active Pokemon!");
-		if(team == GeniusectAI.us && name.toLowerCase().startsWith("wobbuffet") || name.toLowerCase().startsWith("wynaut"))
-		{
-			GeniusectAI.setGeneric();
-		}
+		if(enemy != null)
+			enemy.enemy = this;
+		wobbuffet(true);
 		status.resetActive();
 	}
 	
 	public void onWithdraw()
 	{
 		//Called when this Pokemon withdraws from the battle.
-		for(int i = 0; i < active.length; i++)
-		{
-			if(active[i] == this)
-				active[i] = null;
-		}
+		if(active[team.teamID] == this)
+			active[team.teamID] = null;
 		resetBoosts();
 		effects.clear();
-		if(team == GeniusectAI.us && name.toLowerCase().startsWith("wobbuffet") || team == GeniusectAI.us && name.toLowerCase().startsWith("wynaut"))
-		{
-			GeniusectAI.setMiniMax();
-		}
+		wobbuffet(false);
 	}
 	
-	public void onDie()
+	public Pokemon onDie()
 	{
 		//Called when the Pokemon dies.
+		if(!GeniusectAI.simulating)
+			team.team[id] = this;
+		System.err.println(name+" has died!");
 		onWithdraw();
 		alive = false;
+		Change change = GeniusectAI.onPokemonDeath(this);
+		if(change == null)
+			return null;
+		else return change.switchTo;
 	}
 	
-	public int onNewTurn(Attack a)
+	public int onNewTurn(Action d)
+	{
+		if(hpPercent > 0)
+		{
+			if(d instanceof Attack)
+				return onNewAttack((Attack)d);
+		}
+		else
+		{
+			onDie();
+		}
+		return hpPercent;
+	}
+	
+	public int onNewAttack(Attack a)
 	{
 		//Called when predicting future events.
 		//Whereas the method below takes the moves that THIS Pokemon did, this method takes a move the OTHER Pokemon did.
 		//It returns the amount of damage done in this turn.
 		int preHP = hpPercent;
 		damage(a);
-		damage((int)Math.round(status.newTurn()));
+		for(int i = 0; i < effects.size(); i++)
+		{
+			effects.get(i).onNewTurn();
+		}
+		damage((int)Math.round(status.onNewTurn()));
 		return preHP - hpPercent;
 	}
 	
@@ -173,6 +175,8 @@ public class Pokemon {
 			if(moveset[i].name.toLowerCase().startsWith("Struggle") && !n.toLowerCase().startsWith("Struggle"))
 			{
 				moveset[i] = new Move(n,this);
+				if(n.toLowerCase().startsWith("Hidden Power"))
+					moveset[i] = new HiddenPower(moveset[i]);
 				moveset[i].onMoveUsed(enemy, damageDone, crit);
 				break;
 			}
@@ -182,7 +186,7 @@ public class Pokemon {
 				break;
 			}
 		}
-		status.newTurn();
+		status.onNewTurn();
 	}
 	
 	public int restoreHP(int restorePercent)
@@ -209,6 +213,11 @@ public class Pokemon {
 	public boolean damage(Attack attack)
 	{
 		return damage(attack.move.getProjectedPercent(this).y);
+	}
+	
+	public void removeStatus(VolatileStatus status)
+	{
+		effects.remove(status);
 	}
 	
 	/*
@@ -263,6 +272,25 @@ public class Pokemon {
 		return hpPercent;
 	}
 	
+	public boolean hasMove(String moveName)
+	{
+		for(int i = 0; i < moveset.length; i++)
+		{
+			if(moveset[i].name.toLowerCase().startsWith(moveName))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	public void chargeMove()
+	{
+		inflictStatus(VolatileStatus.Charging);
+		canMove = false;
+		canSwitch = false;
+	}
+	
 	/*
 	 * 
 	 * Logic methods below here.
@@ -312,7 +340,8 @@ public class Pokemon {
 	
 	public void inflictStatus(VolatileStatus s)
 	{
-		s.inflict(this); //Will change our effects ArrayList if possible.
+		effects.add(s);
+		s.inflict(this);
 	}
 	
 	public void giveBoosts(Stat boost, int count)
@@ -351,6 +380,59 @@ public class Pokemon {
 		boostedStats = stats;
 	}
 	
+	public void wobbuffet(boolean entering)
+	{
+		if(team.teamID == 0 && name.toLowerCase().startsWith("wobbuffet") || name.toLowerCase().startsWith("wynaut"))
+		{
+			if(entering)
+				GeniusectAI.setGeneric();
+			//else
+				//GeniusectAI.setMiniMax();
+		}
+	}
+	
+	public void clone(Pokemon clone)
+	{
+		name = clone.name;
+		id = clone.id;
+		item = clone.item;
+		team = clone.team;
+		level = clone.level;
+		types = clone.types;
+		ability = clone.ability;
+		nature = clone.nature;
+		tier = clone.tier;
+		
+		quadrupleEffective = clone.quadrupleEffective;
+		superEffective = clone.superEffective;
+		resistances = clone.resistances;
+		doubleResistances = clone.doubleResistances;
+		immunities = clone.immunities;
+		
+		moveset[0] = new Move(clone.moveset[0]);
+		moveset[1] = new Move(clone.moveset[1]);
+		moveset[2] = new Move(clone.moveset[2]);
+		moveset[3] = new Move(clone.moveset[3]);
+		
+		base = clone.base;
+		ivs = clone.ivs;
+		evs = clone.evs;
+		stats = clone.stats;
+		boosts = clone.boosts;
+		boostedStats = clone.boostedStats;
+		fullHP = clone.fullHP;
+		hpPercent = clone.hpPercent;
+		evsLeft = clone.evsLeft;
+		
+		lead = clone.lead;
+		alive = clone.alive;
+		canMove = clone.canMove;
+		status = clone.status;
+		effects = clone.effects;
+		enemy = clone.enemy;
+	}
+	
+	
 	
 	/*
 	 * 
@@ -358,7 +440,7 @@ public class Pokemon {
 	 * 
 	 */
 	
-	public static Pokemon loadFromText(String importable, Team t)
+	public static Pokemon loadFromText(String importable, Team t, int count)
 	{
 		if(importable.isEmpty())
 			return null;
@@ -372,6 +454,7 @@ public class Pokemon {
 		if(m.find()) // only need 1 find for this
 		{
 			found = new Pokemon();
+			found.id = count;
 			found.name = importable.substring(m.start(1), m.end(1));
 			found.item = new Item(importable.substring(m.start(2), m.end(2)));
 			found.ability = new Ability(importable.substring(m.start(3), m.end(3)));

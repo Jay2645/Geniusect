@@ -17,8 +17,10 @@ public class Move {
 	public int power;
 	public int accuracy;
 	public Type type;
-	public String target; //TODO: Convert to enum.
-	public Map<Stat, String> boosts = new HashMap<Stat, String>(); //Int throws error for some reason?
+	public Target target;
+	public Status condition = null; //A status condition to inflict upon a target.
+	public Map<VolatileStatus, Target> vol = new HashMap<VolatileStatus, Target>(); //The volatile status condition caused and its target.
+	public Map<Stat, String> boosts = new HashMap<Stat, String>(); //What stats are boosted. <Stat, int> throws error for some reason?
 	public boolean special;
 	public boolean status;
 	public int boostChance = 0;
@@ -26,8 +28,10 @@ public class Move {
 	
 	public boolean disabled = false;
 	
-	private Map<Pokemon, Point> projectedDamage = new HashMap<Pokemon,Point>(6);
-	private Map<Pokemon, Point> projectedPercent = new HashMap<Pokemon, Point>(6);
+	protected Map<Pokemon, Point> projectedDamage = new HashMap<Pokemon,Point>(6);
+	protected Map<Pokemon, Point> projectedPercent = new HashMap<Pokemon, Point>(6);
+	
+	public Move(){}
 	
 	public Move(Move clone)
 	{
@@ -66,7 +70,7 @@ public class Move {
 	
 	public void onMoveUsed(Pokemon enemy, int damageDone, boolean wasCrit)
 	{
-		//Called when a move is used.
+		//Called when this move is used.
 		if(enemy.ability == null)
 		{
 			pp--;

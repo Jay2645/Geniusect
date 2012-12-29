@@ -7,6 +7,8 @@
 
 package geniusect;
 
+import seleniumhelper.ShowdownHelper;
+
 public class GeniusectAI {
 	
 	public static Team us;
@@ -20,40 +22,55 @@ public class GeniusectAI {
 	
 	public static int deficit;
 	public static Action nextTurn;
-	public static Action lastTurn;
+	public static Action lastTurnUs;
+	public static Action lastTurnEnemy;
 	
 	private static boolean genetic = false;
 	private static boolean miniMax = false;
 	private static boolean generic = true;
 	
-	public static int turnCount = 0;
+	public static int turnCount = 1;
+	public static int teamID = 0;
+	public static int enemyID = 1;
 	
+	public static boolean playing = false; // TRUE if we have found a battle.
+	public static boolean simulating = false; // TRUE if we are simulating future turns.
+	
+	public static ShowdownHelper showdown = null;
 	public static String version = "0.0.1";
+
+	public static int battleCount = 0;
+	public static int winCount = 0;
+	public static int lossCount = 0;
+	
+	public static int turnsToSimulate = 100; //How many turns we simulate, if Showdown is not running?
 	
 	public static void battleStart(String load)
 	{
+		turnsToSimulate *= 2;
+		battleCount++;
+		playing = true;
 		//Called when the battle begins.
 		//Can load a team from an importable.
-		print("Geniusect AI version "+version+" initialized.");
-		print("You are playing against an AI. If you suspect the AI is not responding, feel free to hit 'Kick Inactive Player.'");
-		us = new Team(load);
-		enemy = new Team();
+		print("Geniusect version "+version+" has entered a battle. Session battle count: "+battleCount);
+		print("Hello! You are playing against an AI. Occasionally I might get hung up while making a move.");
+		print("If you suspect I'm not responding, feel free to hit 'Kick Inactive Player.'");
+		us = new Team(load, teamID);
+		enemy = new Team(enemyID);
 		//TODO: If we can choose lead, do so and log names of all enemy Pokemon.
 		String pokemonName = "Genesect"; //TODO: Replace with the name of the enemy lead.
 		enemy.addPokemon(pokemonName);
-		us.active = us.team[0];
-		enemy.active = enemy.team[0];
-		us.active.changeEnemy(enemy.active);
-		enemy.active.changeEnemy(us.active);
-		enemy.active.moveset[0] = new Move("U-Turn", enemy.active);
-		enemy.active.moveset[1] = new Move("Ice Beam", enemy.active);
-		enemy.active.moveset[2] = new Move("Thunderbolt", enemy.active);
-		enemy.active.moveset[3] = new Move("Fire Blast", enemy.active);
+		Pokemon.active[teamID].changeEnemy(Pokemon.active[enemyID]);
+		Pokemon.active[enemyID].changeEnemy(Pokemon.active[teamID]);
+		Pokemon.active[enemyID].moveset[0] = new Move("U-Turn", Pokemon.active[enemyID]);
+		Pokemon.active[enemyID].moveset[1] = new Move("Ice Beam", Pokemon.active[enemyID]);
+		Pokemon.active[enemyID].moveset[2] = new Move("Thunderbolt", Pokemon.active[enemyID]);
+		Pokemon.active[enemyID].moveset[3] = new Move("Fire Blast", Pokemon.active[enemyID]);
 		for(int i = 0; i < enemy.team.length; i++)
 		{
 			if(enemy.team[i].name.equalsIgnoreCase(pokemonName))
 			{
-				enemy.active = enemy.team[i];
+				Pokemon.active[enemyID] = enemy.team[i];
 				break;
 			}
 		}
@@ -62,49 +79,116 @@ public class GeniusectAI {
 	
 	public static void newTurn()
 	{
-		turnCount++;
-		if(turnCount % 5 == 0)
+		turnCount++;		
+		System.err.println("\n\n\n*******************************TEAM "+teamID+", TURN "+(turnCount / 2)+"*******************************");
+		System.err.println("**************************ACTIVE POKEMON: "+Pokemon.active[teamID].name+"**************************");
+		if(showdown != null && turnCount % 5 == 0)
 			lastTurnLogic();
-		lastTurn = nextTurn;
-		//TODO:	FETCH:
-		//		- Enemy Pokemon
-		//		- Our HP
-		//		- Enemy HP
-		//		- Enemy move used (and if any boosts were obtained)
-		//		- The PP of the move we just used (and if any boosts were obtained)
-		//		CHECK:
-		//		- If we died (and change using generic logic if so)
-		//		- Actual damage done (predicted versus actual)
-		//		- If move was crit.
-		//		- Status inflicted
-		//		- Entry hazards placed
+		if(showdown == null)
+			lastTurnEnemy = nextTurn;
+		else
+		{
+			lastTurnUs = nextTurn;
+			//TODO:	FETCH:
+			//		- Enemy Pokemon
+			//		- Our HP
+			//		- Enemy HP
+			//		- Enemy move used (and if any boosts were obtained)
+			//		- The PP of the move we just used (and if any boosts were obtained)
+			//		CHECK:
+			//		- If we died (and change using generic logic if so)
+			//		- Actual damage done (predicted versus actual)
+			//		- If move was a crit.
+			//		- Status inflicted
+			//		- Entry hazards placed
+		}
+		simulating = true;
 		if(generic)
 			nextTurn = bestMove();
 		else if(miniMax || genetic)
 			nextTurn = minimax(1);
 		//else if(genetic)
-			//nextTurn == TODO;
-			
+			//nextTurn = TODO;
+		simulating = false;
 		nextTurn.sendToShowdown();
+	}
+	
+	public static void swapSides()
+	{
+		//If there's no Showdown running, play against ourselves.
+		if(showdown == null)
+		{
+			if(turnCount % 5 != 0)
+				System.out.println("***THIS IS BEING PRINTED FOR DEBUGGING PURPOSES.***\n(It would not be printed in an actual battle.)");
+			lastTurnLogic();
+			int e = teamID;
+			teamID = enemyID;
+			enemyID = e;
+			Team t = us;
+			us = enemy;
+			enemy = t;
+			Pokemon.active[teamID].onNewTurn(nextTurn);
+			if(playing)
+			{
+				turnsToSimulate--;
+				if(turnsToSimulate > 0)
+					newTurn();
+			}
+		}
+	}
+	
+	public static Change onPokemonDeath(Pokemon dead)
+	{
+		if(playing)
+		{
+			//Called when a Pokemon gets killed.
+			Pokemon change = Change.bestCounter(dead.team.team, dead.enemy);
+			if(change == null)
+			{
+				System.err.println(dead.enemy.name+" wins the game!");
+				boolean won = false;
+				if(dead.team == enemy)
+					won = true;
+				gameOver(won);
+				return null;
+			}
+			else
+			{
+				Change c = new Change(change);
+				c.say("Oh my god! You killed "+dead+"! D:");
+				c.deploy();
+				return c;
+			}
+		}
+		return null;
 	}
 	
 	public static void gameOver(boolean won)
 	{
+		System.err.println("Game over.");
+		if(simulating)
+			return;
+		playing = false;
+		turnsToSimulate = 0;
 		if(won)
 		{
-			print("We won! Bow before your new robot overlords.");
+			winCount++;
+			print("I won! I, for one, welcome our new robot overlords.");
+			print("Good game.");
 		}
 		else
 		{
+			lossCount++;
 			print("GG. :(");
 		}
-		if(turnCount % 5 != 0)
-			lastTurnLogic();
+		print("Geniusect win/loss ratio: "+winCount +" : "+ lossCount);
+		if(showdown != null)
+			showdown.surrender();
 	}
 	
 	public static Action bestMove()
 	{
-		return bestMove(us.active,enemy.active);
+		return bestMove(Pokemon.active[teamID],Pokemon.active[enemyID]);
 	}
 	
 	public static Action bestMove(Pokemon ourGuy, Pokemon theirGuy)
@@ -113,7 +197,7 @@ public class GeniusectAI {
 		if(shouldSwitch(ourGuy,theirGuy))
 		{
 			Change sanityCheck = new Change(Change.bestChange(ourGuy, ourGuy.team.team, theirGuy, Pokequations.bestMove(theirGuy, ourGuy)));
-			if(sanityCheck.switchTo == ourGuy)
+			if(sanityCheck.switchTo.name.toLowerCase().startsWith(ourGuy.name.toLowerCase()))
 				doNext = new Attack(ourBestMove,ourGuy,theirGuy);
 			else doNext = sanityCheck;
 		}
@@ -130,7 +214,6 @@ public class GeniusectAI {
 		
 		if(theirBestMove == null)
 			return false;
-		print("Their best move is "+theirBestMove.name+", which will kill in about "+turnsToKillUs+" turns.");
 		ourBestMove = Pokequations.bestMove(ourGuy, theirGuy,theirBestMove);
 		if(ourBestMove == null)
 			return true;
@@ -149,12 +232,12 @@ public class GeniusectAI {
 		{
 			ourBestMove = ((Attack) decision).move;
 			print("We are going to try to use "+ourBestMove.name);
-			theirBestMove = Pokequations.bestMove(enemy.active, us.active, ourBestMove);
+			theirBestMove = Pokequations.bestMove(Pokemon.active[enemyID], Pokemon.active[teamID], ourBestMove);
 			if(theirBestMove == null)
 				turnsToKillUs++;
 			else
-				turnsToKillUs = Pokequations.turnsToKill(us.active.hpPercent, theirBestMove.getProjectedPercent(us.active).y + ourBestMove.recoilPercent);
-			turnsToKillThem = Pokequations.turnsToKill(enemy.active.hpPercent, ourBestMove.getProjectedPercent(enemy.active).x + theirBestMove.recoilPercent);
+				turnsToKillUs = Pokequations.turnsToKill(Pokemon.active[teamID].hpPercent, theirBestMove.getProjectedPercent(Pokemon.active[teamID]).y + ourBestMove.recoilPercent);
+			turnsToKillThem = Pokequations.turnsToKill(Pokemon.active[enemyID].hpPercent, ourBestMove.getProjectedPercent(Pokemon.active[enemyID]).x + theirBestMove.recoilPercent);
 		}
 	}
 	
@@ -179,54 +262,54 @@ public class GeniusectAI {
 	
 	public static void printEnemy()
 	{
-		print("Here's what I know about the enemy's "+enemy.active.name);
-		print("It is level "+enemy.active.level);
-		print("Its types are "+enemy.active.types[0]+" and "+enemy.active.types[1]);
-		print("Its nature is "+enemy.active.nature.toString());
-		if(enemy.active.ability != null)
-			print("Its ability is "+enemy.active.ability.name);
-		if(!enemy.active.immunities.isEmpty())
+		print("Here's what I know about the enemy's "+Pokemon.active[enemyID].name);
+		print("It is level "+Pokemon.active[enemyID].level);
+		print("Its types are "+Pokemon.active[enemyID].types[0]+" and "+Pokemon.active[enemyID].types[1]);
+		print("Its nature is "+Pokemon.active[enemyID].nature.toString());
+		if(Pokemon.active[enemyID].ability != null)
+			print("Its ability is "+Pokemon.active[enemyID].ability.name);
+		if(!Pokemon.active[enemyID].immunities.isEmpty())
 		{
 			print("It is immune to:");
-			for(int i = 0; i < enemy.active.immunities.size(); i++)
+			for(int i = 0; i < Pokemon.active[enemyID].immunities.size(); i++)
 			{
-				print(enemy.active.immunities.get(i).toString());
+				print(Pokemon.active[enemyID].immunities.get(i).toString());
 			}
 		}
 		print("It knows:");
-		for(int i = 0; i <enemy.active.moveset.length; i++)
+		for(int i = 0; i <Pokemon.active[enemyID].moveset.length; i++)
 		{
-			if(enemy.active.moveset[i] == null)
+			if(Pokemon.active[enemyID].moveset[i] == null)
 			{
 				print("I am unsure what it has in moveslot "+(i + 1));
 				continue;
 			}
-			print(enemy.active.moveset[i].name);
+			print(Pokemon.active[enemyID].moveset[i].name);
 		}
 		print("I believe its stats are about:");
-		for(int i = 0; i < enemy.active.stats.length; i++)
+		for(int i = 0; i < Pokemon.active[enemyID].stats.length; i++)
 		{
-			print(Stat.fromInt(i)+": "+enemy.active.stats[i]);
+			print(Stat.fromInt(i)+": "+Pokemon.active[enemyID].stats[i]);
 		}
 		print("I think it has an EV spread of:");
-		for(int i = 0; i < enemy.active.evs.length; i++)
+		for(int i = 0; i < Pokemon.active[enemyID].evs.length; i++)
 		{
-			print(Stat.fromInt(i)+": "+enemy.active.evs[i]);
+			print(Stat.fromInt(i)+": "+Pokemon.active[enemyID].evs[i]);
 		}
-		print("If I use my best move against them, "+ourBestMove.name+", it will do about "+ ourBestMove.getProjectedDamage(enemy.active, true) +" HP worth of damage ("+ourBestMove.getProjectedPercent(enemy.active, true)+" percent).");
-		print("I project it will take about "+turnsToKillThem+" turns to kill their "+enemy.active.name+".");
-		print("If they use their best move against me, "+theirBestMove.name+", it will do about "+ theirBestMove.getProjectedDamage(us.active, true) +" HP worth of damage ("+theirBestMove.getProjectedPercent(us.active, true)+" percent).");
-		print("I project it will take them about "+turnsToKillUs+" turns to kill my " +us.active.name+".");
+		print("If I use my best move against them, "+ourBestMove.name+", it will do about "+ ourBestMove.getProjectedDamage(Pokemon.active[enemyID], true) +" HP worth of damage ("+ourBestMove.getProjectedPercent(Pokemon.active[enemyID], true)+" percent).");
+		print("I project it will take about "+turnsToKillThem+" turns to kill their "+Pokemon.active[enemyID].name+".");
+		print("If they use their best move against me, "+theirBestMove.name+", it will do about "+ theirBestMove.getProjectedDamage(Pokemon.active[teamID], true) +" HP worth of damage ("+theirBestMove.getProjectedPercent(Pokemon.active[teamID], true)+" percent).");
+		print("I project it will take them about "+turnsToKillUs+" turns to kill my " +Pokemon.active[teamID].name+".");
 		if(nextTurn instanceof Change)
 		{
 			Change switching = (Change) nextTurn;
 			print("It is advisable that I switch, as they can kill me faster than I can kill them.");
-			print("I plan to change to "+switching.switchTo.name+", who will take "+theirBestMove.getProjectedDamage(switching.switchTo, true)+" HP worth of damage ("+theirBestMove.getProjectedPercent(switching.switchTo, true)+" percent).");
+			print("I plan to change to "+switching.switchTo.name+", who will take about "+theirBestMove.getProjectedDamage(switching.switchTo, true)+" HP worth of damage ("+theirBestMove.getProjectedPercent(switching.switchTo, true)+" percent).");
 		}
 		else if(nextTurn instanceof Attack)
 		{
 			Attack attacking = (Attack) nextTurn;
-			print("I decided that the best course of action is an attack. "+us.active.name+" will use "+attacking.move.name);
+			print("I decided that the best course of action is an attack. "+Pokemon.active[teamID].name+" will use "+attacking.move.name);
 		}
 	}
 	
@@ -249,7 +332,7 @@ public class GeniusectAI {
 	
 	public static AINode scoreTree(int depth)
 	{
-		AINode node = new AINode(us.team,enemy.team,us.active,enemy.active);
+		AINode node = new AINode(us.team,enemy.team,Pokemon.active[teamID],Pokemon.active[enemyID]);
 		node.addChild(scoreTree(new AINode(node),depth));
 		return node;
 	}
@@ -268,8 +351,6 @@ public class GeniusectAI {
 				else
 				{
 					madeMove = true;
-					node.ourActive.onWithdraw();
-					node.ourTeam[i].onSendOut();
 					node.setDecision(new Change(node.ourTeam[i]));
 					print(node.ourActive.name+" added decision: "+node.decision.name);
 					AINode child = new AINode(node);
@@ -322,7 +403,7 @@ public class GeniusectAI {
 	{
 		//Text to send to Showdown.
 		//TODO: Showdown hookup.
-		System.out.println(text);
+		System.out.println("BATTLE CHAT: "+text);
 	}
 	
 	public static void setGenetic()

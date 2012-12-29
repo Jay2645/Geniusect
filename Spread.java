@@ -11,14 +11,8 @@ package geniusect;
 public class Spread extends Pokemon {
 	public Spread(Pokemon p, boolean recheck)
 	{
-		name = p.name;
-		item = p.item;
-		level = p.level;
-		ability = p.ability;
-		nature = p.nature;
-		evs = p.evs;
-		moveset = p.moveset;
-		lead = p.lead;
+		clone(p);
+		team.team[id] = this;
 		improbable = recheck;
 	}
 	
@@ -58,6 +52,7 @@ public class Spread extends Pokemon {
 	double probabilityRegular;
 	double probabilityLead;
 	int timesEncountered;
+	int rageQuits; //How many times this Pokemon has made someone rageQuit.
 	boolean improbable = false;
 	
 	public static Spread identifySpread(Pokemon p)
@@ -76,46 +71,26 @@ public class Spread extends Pokemon {
 		return found;
 	}
 	
-	
 	public void withdraw()
 	{
 		//Called when this Pokemon withdraws from the battle.
-		for(int i = 0; i < active.length; i++)
-		{
-			if(active[i] == this)
-				active[i] = null;
-		}
+		if(active[team.teamID] == this)
+			active[team.teamID] = null;
 		boostedStats = stats;
-		if(team == GeniusectAI.us)
+		if(team.teamID == 0)
 		{
 			GeniusectAI.setMiniMax();
 		}
 	}
 	
-	public void sendOut()
+	public void wobbuffet(boolean entering)
 	{
-		//Called when this Pokemon enters the battle.
-		boolean entered = false;
-		for(int i = 0; i < active.length; i++)
+		if(team.teamID == 0 && name.toLowerCase().startsWith("wobbuffet") || name.toLowerCase().startsWith("wynaut"))
 		{
-			if(active[i] == null)
-			{
-				active[i] = this;
-				entered = true;
-			}
-		}
-		if(!entered)
-			GeniusectAI.print("Could not mark "+name+" as the active Pokemon!");
-		if(team == GeniusectAI.us)
-		{
-			if(name.toLowerCase().startsWith("wobbuffet") || name.toLowerCase().startsWith("wynaut"))
-			{
+			if(entering)
 				GeniusectAI.setGeneric();
-			}
-			else
-			{
-				GeniusectAI.setGenetic();
-			}
+			//else
+				//GeniusectAI.setGenetic();
 		}
 	}
 }

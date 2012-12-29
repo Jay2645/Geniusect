@@ -38,7 +38,7 @@ public enum Status {
 		}
 	}
 	
-	public double newTurn()
+	public double onNewTurn()
 	{
 		turnsActive++;
 		if(this == Status.ToxicPoison)
