@@ -35,7 +35,7 @@ public class GeniusectAI {
 		//Called when the battle begins.
 		//Can load a team from an importable.
 		print("Geniusect AI version "+version+" initialized.");
-		print("You are playing against an AI. If you suspect the AI is not responding, feel free to hit 'Kick Inactive Player.'")
+		print("You are playing against an AI. If you suspect the AI is not responding, feel free to hit 'Kick Inactive Player.'");
 		us = new Team(load);
 		enemy = new Team();
 		//TODO: If we can choose lead, do so and log names of all enemy Pokemon.
