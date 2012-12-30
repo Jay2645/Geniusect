@@ -54,7 +54,11 @@ public class Move {
 	
 	public Move(String n, Pokemon p)
 	{
-		name = n;
+		int i = n.indexOf("\n");
+		if(i == -1)
+			name = n;
+		else
+			name = n.substring(0, i);
 		user = p;
 		if(name.toLowerCase().startsWith("Struggle"))
 		{

@@ -7,6 +7,13 @@
 
 package geniusect;
 
+
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.firefox.FirefoxDriver;
+
 import seleniumhelper.ShowdownHelper;
 
 public class GeniusectAI {
@@ -21,19 +28,15 @@ public class GeniusectAI {
 	public static int turnsToKillUs;
 	
 	public static int deficit;
-	public static Action nextTurn;
-	public static Action lastTurnUs;
-	public static Action lastTurnEnemy;
 	
 	private static boolean genetic = false;
 	private static boolean miniMax = false;
 	private static boolean generic = true;
 	
-	public static int turnCount = 1;
 	public static int teamID = 0;
 	public static int enemyID = 1;
 	
-	public static boolean playing = false; // TRUE if we have found a battle.
+	public static Battle battle = null;
 	public static boolean simulating = false; // TRUE if we are simulating future turns.
 	
 	public static ShowdownHelper showdown = null;
@@ -44,181 +47,70 @@ public class GeniusectAI {
 	public static int lossCount = 0;
 	
 	
-	
-	private static String importableUs =	"Ninetales @ Leftovers" +
-											"\nTrait: Drought" +
-											"\nEVs: 252 HP / 252 SAtk / 4 SDef" +
-											"\nModest Nature" +
-											"\n- Sunny Day" +
-											"\n- SolarBeam" +
-											"\n- Overheat" +
-											"\n- Power Swap" +
-											"\n" +
-											"\nTangrowth @ Leftovers" +
-											"\nTrait: Chlorophyll" +
-											"\nEVs: 252 HP / 252 Spd / 4 Atk" +
-											"\nNaive Nature" +
-											"\n- Growth" +
-											"\n- Power Whip" +
-											"\n- Hidden Power" +
-											"\n- Earthquake" +
-											"\n" +
-											"\nDugtrio @ Focus Sash" +
-											"\nTrait: Arena Trap" +
-											"\nEVs: 252 Spd / 4 Def / 252 Atk" +
-											"\nJolly Nature" +
-											"\n- Earthquake" +
-											"\n- Sucker Punch" +
-											"\n- Stone Edge" +
-											"\n- Reversal" +
-											"\n" +
-											"\nHeatran @ Choice Scarf" +
-											"\nTrait: Flash Fire" +
-											"\nEVs: 252 Spd / 252 SAtk / 4 HP" +
-											"\nModest Nature" +
-											"\n- Overheat" +
-											"\n- SolarBeam" +
-											"\n- Earth Power" +
-											"\n- Hidden Power" +
-											"\n" +
-											"\nDragonite @ Lum Berry" +
-											"\nTrait: Multiscale" +
-											"\nEVs: 252 Spd / 4 HP / 252 Atk" +
-											"\nAdamant Nature" +
-											"\n- Dragon Dance" +
-											"\n- Fire Punch" +
-											"\n- ExtremeSpeed" +
-											"\n- Outrage" +
-											"\n" +
-											"\nDonphan @ Leftovers" +
-											"\nTrait: Sturdy" +
-											"\nEVs: 252 SDef / 28 HP / 228 Def" +
-											"\nCareful Nature" +
-											"\n- Rapid Spin" +
-											"\n- Toxic" +
-											"\n- Stealth Rock" +
-											"\n- Earthquake";
-	
-			
-	private static String importableEnemy =	"Forretress @ Leftovers " +
-											"\nTrait: Sturdy" +
-											"\nEVs: 252 HP / 4 Atk / 252 Def" +
-											"\nRelaxed Nature" +
-											"\n- Toxic Spikes" +
-											"\n- Gyro Ball" +
-											"\n- Stealth Rock" +
-											"\n- Rapid Spin" +
-											"\n" +
-											"\nGarchomp @ Choice Scarf" +
-											"\nTrait: Rough Skin" +
-											"\nEVs: 4 HP / 252 Atk / 252 Spd" +
-											"\nAdamant Nature" +
-											"\n- Outrage" +
-											"\n- Earthquake" +
-											"\n- Stone Edge" +
-											"\n- Brick Break" +
-											"\n" +
-											"\nChansey @ Eviolite" +
-											"\nTrait: Natural Cure" +
-											"\nEVs: 248 HP / 252 Def / 8 Spd" +
-											"\nBold Nature" +
-											"\n- Toxic" +
-											"\n- Protect" +
-											"\n- Wish" +
-											"\n- Seismic Toss" +
-											"\n" +
-											"\nLatios @ Choice Specs" +
-											"\nTrait: Levitate" +
-											"\nEVs: 6 HP / 252 SAtk / 252 Spd" +
-											"\nTimid Nature" +
-											"\n- Surf" +
-											"\n- Psyshock" +
-											"\n- Draco Meteor" +
-											"\n- Hidden Power" +
-											"\n" +
-											"\nConkeldurr @ Leftovers" +
-											"\nTrait: Guts" +
-											"\nEVs: 120 HP / 252 Atk / 136 SDef" +
-											"\nAdamant Nature" +
-											"\n- Bulk Up" +
-											"\n- Drain Punch" +
-											"\n- Payback" +
-											"\n- Mach Punch" +
-											"\n" +
-											"\nHeatran @ Choice Scarf" +
-											"\nTrait: Flash Fire" +
-											"\nEVs: 6 HP / 252 SAtk / 252 Spd" +
-											"\nModest Nature" +
-											"\n- Overheat" +
-											"\n- Earth Power" +
-											"\n- Hidden Power" +
-											"\n- Dragon Pulse";
-	
-	
-	public static int turnsToSimulate = 50; //How many turns we simulate, if Showdown is not running?
-	
 	public static void main(String[] args) {
-    	/*
-        WebDriver driver = new FirefoxDriver();
-        Showdown showdown = new Showdown(driver);
- 
-        driver.get(showdown.rooturl);
-       
-        showdown.login();        
-        */
-    	GeniusectAI.battleStart();
+		WebDriver driver = new FirefoxDriver();
+    	// wait up to 10 seconds for elements to load
+    	driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
+        
+        showdown = new ShowdownHelper(driver);
+		if(showdown == null)
+		{
+			battle = new Battle();
+			battle.findBattle();
+		}
+		else
+		{
+			showdown.open();
+			try
+			{
+				showdown.login("Porygon-G","test123");
+			}
+			catch(Exception e)
+			{
+				System.err.println("Could not log in! Exception data: "+e);
+				return;
+			}
+	        battle = new Battle();
+	        if(!battle.findBattle())
+	        	return;
+		}
+    	battle.battleStart();
     }
 	
-	
-	
-	public static void battleStart()
+	public static void displayIntro()
 	{
-		turnsToSimulate *= 2;
-		battleCount++;
-		playing = true;
-		//Called when the battle begins.
-		//Can load a team from an importable.
 		print("Geniusect version "+version+" has entered a battle. Session battle count: "+battleCount);
 		print("Hello! You are playing against an AI. Occasionally I might get hung up while making a move.");
 		print("If you suspect I'm not responding, feel free to hit 'Kick Inactive Player.'");
-		us = new Team(importableUs, teamID);
-		enemy = new Team(importableEnemy, enemyID);
-		//TODO: If we can choose lead, do so and log names of all enemy Pokemon.
-		Pokemon.active[teamID].changeEnemy(Pokemon.active[enemyID]);
-		Pokemon.active[enemyID].changeEnemy(Pokemon.active[teamID]);
-		newTurn();
 	}
 	
-	public static void newTurn()
+	public static void populateTeams(Team one, Team two)
 	{
-		if(!playing)
-			return;
-		if(showdown == null)
-			turnCount++;		
-		else
-			turnCount = showdown.getCurrentTurn();
-		System.err.println("\n\n\n*******************************TEAM "+teamID+", TURN "+(turnCount / 2)+"*******************************");
-		System.err.println("**************************ACTIVE POKEMON: "+Pokemon.active[teamID].name+"**************************");
-		if(showdown != null && turnCount % 5 == 0)
-			lastTurnLogic();
-		if(showdown == null)
-			lastTurnEnemy = nextTurn;
-		else
+		us = one;
+		enemy = two;
+		if(GeniusectAI.showdown!= null)
 		{
-			lastTurnUs = nextTurn;
-			//TODO:	FETCH:
-			//		- Enemy Pokemon
-			//		- Our HP
-			//		- Enemy HP
-			//		- Enemy move used (and if any boosts were obtained)
-			//		- The PP of the move we just used (and if any boosts were obtained)
-			//		CHECK:
-			//		- If we died (and change using generic logic if so)
-			//		- Actual damage done (predicted versus actual)
-			//		- If move was a crit.
-			//		- Status inflicted
-			//		- Entry hazards placed
+			//Populate each team.
+			us.userName = showdown.getUserName();
+			List<String> ourPokes= showdown.getTeam(us.userName);
+			for(int i = 0; i < ourPokes.size(); i++)
+				us.addPokemon(ourPokes.get(i));
+			enemy.userName = showdown.getOpponentName();
+			List<String> enemyPokes = showdown.getTeam(enemy.userName);
+			for(int i = 0; i < enemyPokes.size(); i++)
+			{
+				if(i > -1)
+					enemy.addPokemon(enemyPokes.get(i));
+			}
 		}
+		//TODO: If we can choose lead, do so.
+		Pokemon.active[teamID].changeEnemy(Pokemon.active[enemyID]);
+		Pokemon.active[enemyID].changeEnemy(Pokemon.active[teamID]);
+	}
+	
+	public static Action simulate()
+	{
+		Action nextTurn = null;
 		simulating = true;
 		if(generic)
 			nextTurn = bestMove();
@@ -227,53 +119,15 @@ public class GeniusectAI {
 		//else if(genetic)
 			//nextTurn = TODO;
 		simulating = false;
-		if(showdown == null)
-		{
-			if(turnCount % 2 == 1)
-			{
-				if(nextTurn instanceof Change) //Always change first.
-				{
-					Change c = (Change)nextTurn;
-					c.sendToShowdown();
-					if(lastTurnEnemy instanceof Attack)
-					{
-						Attack a = (Attack)lastTurnEnemy;
-						a.defenderSwap(c.switchTo);
-					}
-				}
-				if(lastTurnEnemy instanceof Change)
-				{
-					Change c = (Change)lastTurnEnemy;
-					c.sendToShowdown();
-					if(nextTurn instanceof Attack)
-					{
-						Attack a = (Attack)nextTurn;
-						a.defenderSwap(c.switchTo);
-					}
-				}
-				if(Pokemon.active[teamID].isFasterThan(Pokemon.active[enemyID])) //Check who is faster.
-				{	//Things won't send if they've already been sent, so we don't need to check if we've already sent it.
-					nextTurn.sendToShowdown();
-					lastTurnEnemy.sendToShowdown();
-				}
-				else
-				{
-					lastTurnEnemy.sendToShowdown();
-					nextTurn.sendToShowdown();
-				}
-			}
-			swapSides();
-		}
-		else
-			nextTurn.sendToShowdown();
+		return nextTurn;
 	}
 	
 	public static void swapSides()
 	{
 		//If there's no Showdown running, play against ourselves.
-		if(showdown != null || !playing)
+		if(GeniusectAI.showdown != null || battle == null || !battle.playing)
 			return;
-		if(turnCount % 5 != 0)
+		if(battle.turnCount % 5 != 0)
 			System.out.println("***THIS IS BEING PRINTED FOR DEBUGGING PURPOSES.***\n(It would not be printed in an actual battle.)");
 		lastTurnLogic();
 		int e = teamID;
@@ -282,17 +136,11 @@ public class GeniusectAI {
 		Team t = us;
 		us = enemy;
 		enemy = t;
-		if(playing)
-		{
-			turnsToSimulate--;
-			if(turnsToSimulate > 0)
-				newTurn();
-		}
 	}
 	
 	public static Change onPokemonDeath(Pokemon dead)
 	{
-		if(playing)
+		if(battle.playing)
 		{
 			//Called when a Pokemon gets killed.
 			Pokemon change = Change.bestCounter(dead.team.team, dead.enemy);
@@ -321,8 +169,9 @@ public class GeniusectAI {
 		System.err.println("Game over.");
 		if(simulating)
 			return;
-		playing = false;
-		turnsToSimulate = 0;
+		battle.playing = false;
+		battle.turnsToSimulate = 0;
+		battle = null;
 		if(won)
 		{
 			winCount++;
@@ -396,9 +245,11 @@ public class GeniusectAI {
 	
 	public static void lastTurnLogic()
 	{
-		int count = turnCount - 1;
+		int count = 0;
 		if(showdown == null)
-			count = turnCount / 2;
+			count = battle.turnCount / 2;
+		else
+			count = battle.turnCount = showdown.getCurrentTurn();
 		print("This is the logic I used last turn (turn "+count+").");
 		if(genetic)
 		{
@@ -418,10 +269,10 @@ public class GeniusectAI {
 	
 	public static void printEnemy()
 	{
-		print("I am using a "+Pokemon.active[teamID].name+" with "+Pokemon.active[teamID].hpPercent+"% health.");
+		System.out.println("I am using a "+Pokemon.active[teamID].name+" with "+Pokemon.active[teamID].hpPercent+"% health.");
 		print("Here's what I know about the enemy's "+Pokemon.active[enemyID].name);
 		print("It has "+Pokemon.active[enemyID].hpPercent+"% HP.");
-		print("Its types are "+Pokemon.active[enemyID].types[0]+" and "+Pokemon.active[enemyID].types[1]);
+		System.out.println("Its types are "+Pokemon.active[enemyID].types[0]+" and "+Pokemon.active[enemyID].types[1]);
 		print("Its nature is "+Pokemon.active[enemyID].nature.toString());
 		if(Pokemon.active[enemyID].ability != null)
 			print("Its ability is "+Pokemon.active[enemyID].ability.name);
@@ -434,34 +285,37 @@ public class GeniusectAI {
 			}
 		}
 		print("It knows:");
+		boolean knowsMoves = false;
 		for(int i = 0; i <Pokemon.active[enemyID].moveset.length; i++)
 		{
-			if(Pokemon.active[enemyID].moveset[i] == null)
-			{
-				print("I am unsure what it has in moveslot "+(i + 1));
+			if(Pokemon.active[enemyID].moveset[i] == null || Pokemon.active[enemyID].moveset[i].name.toLowerCase().startsWith("struggle"))
 				continue;
-			}
+			knowsMoves = true;
 			print(Pokemon.active[enemyID].moveset[i].name);
 		}
+		if(!knowsMoves)
+			print("I am unsure what moves it knows.");
 		print("I think it has an EV spread of:");
 		for(int i = 0; i < Pokemon.active[enemyID].evs.length; i++)
 		{
 			print(Stat.fromInt(i)+": "+Pokemon.active[enemyID].evs[i]);
 		}
-		print("If I use my best move against them, "+ourBestMove.name+", it will do about "+ ourBestMove.getProjectedDamage(Pokemon.active[enemyID], true) +" HP worth of damage ("+ourBestMove.getProjectedPercent(Pokemon.active[enemyID], true)+" percent).");
-		print("I project it will take about "+turnsToKillThem+" turns to kill their "+Pokemon.active[enemyID].name+".");
-		print("If they use their best move against me, "+theirBestMove.name+", it will do about "+ theirBestMove.getProjectedDamage(Pokemon.active[teamID], true) +" HP worth of damage ("+theirBestMove.getProjectedPercent(Pokemon.active[teamID], true)+" percent).");
-		print("I project it will take them about "+turnsToKillUs+" turns to kill my " +Pokemon.active[teamID].name+".");
-		if(nextTurn instanceof Change)
+		if(ourBestMove != null)
 		{
-			Change switching = (Change) nextTurn;
-			print("It is advisable that I switch, as they can kill me faster than I can kill them.");
-			print("I plan to change to "+switching.switchTo.name+", who will take about "+theirBestMove.getProjectedDamage(switching.switchTo, true)+" HP worth of damage ("+theirBestMove.getProjectedPercent(switching.switchTo, true)+" percent).");
-		}
-		else if(nextTurn instanceof Attack)
-		{
-			Attack attacking = (Attack) nextTurn;
-			print("I decided that the best course of action is an attack. "+Pokemon.active[teamID].name+" will use "+attacking.move.name);
+			print("If I use my best move against them, "+ourBestMove.name+", it will do about "+ ourBestMove.getProjectedDamage(Pokemon.active[enemyID], true) +" HP worth of damage ("+ourBestMove.getProjectedPercent(Pokemon.active[enemyID], true)+" percent).");
+			print("I project it will take about "+turnsToKillThem+" turns to kill their "+Pokemon.active[enemyID].name+".");
+			print("If they use their best move against me, "+theirBestMove.name+", it will do about "+ theirBestMove.getProjectedDamage(Pokemon.active[teamID], true) +" HP worth of damage ("+theirBestMove.getProjectedPercent(Pokemon.active[teamID], true)+" percent).");
+			print("I project it will take them about "+turnsToKillUs+" turns to kill my " +Pokemon.active[teamID].name+".");
+			if(battle.nextTurn instanceof Change)
+			{
+				Change switching = (Change) battle.nextTurn;
+				print("I plan to change to "+switching.switchTo.name+", who will take about "+theirBestMove.getProjectedDamage(switching.switchTo, true)+" HP worth of damage ("+theirBestMove.getProjectedPercent(switching.switchTo, true)+" percent).");
+			}
+			else if(battle.nextTurn instanceof Attack)
+			{
+				Attack attacking = (Attack) battle.nextTurn;
+				print(Pokemon.active[teamID].name+" plans to use "+attacking.move.name);
+			}
 		}
 	}
 	
@@ -554,8 +408,11 @@ public class GeniusectAI {
 	public static void print(String text)
 	{
 		//Text to send to Showdown.
-		//TODO: Showdown hookup.
-		System.out.println("BATTLE CHAT: "+text);
+		System.err.println("Sending text to chat.");
+		if(showdown == null)
+			System.out.println("BATTLE CHAT: "+text);
+		else
+			showdown.sendMessage(text);
 	}
 	
 	public static void setGenetic()

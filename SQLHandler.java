@@ -140,15 +140,36 @@ public class SQLHandler {
 			int type2Holder = -1;
 			while (rs.next ())
 			{
-				p.base[Stat.HP.toInt()] = Integer.parseInt(rs.getString("hp"));
-				p.base[Stat.Atk.toInt()] = Integer.parseInt(rs.getString("atk"));
-				p.base[Stat.Def.toInt()] = Integer.parseInt(rs.getString("def"));
-				p.base[Stat.SpA.toInt()] = Integer.parseInt(rs.getString("spa"));
-				p.base[Stat.SpD.toInt()] = Integer.parseInt(rs.getString("spd"));
-				p.base[Stat.Spe.toInt()] = Integer.parseInt(rs.getString("spe"));
+				if(!rs.getString("name").toLowerCase().startsWith(currentPokemon.toLowerCase()))
+					System.err.println("Could not find find "+currentPokemon+" in SQL database!");
+				String[] stats = new String[6];
+				stats[0] = rs.getString("hp");
+				stats[1] = rs.getString("atk");
+				stats[2] = rs.getString("def");
+				stats[3] = rs.getString("spa");
+				stats[4] = rs.getString("spd");
+				stats[5] = rs.getString("spe");
+				for(int i = 0; i < stats.length; i++)
+				{
+					if(stats[i].isEmpty())
+					{
+						System.err.println("Could not determine "+currentPokemon+"'s "+Stat.fromInt(i).toString()+" stat!");
+						continue;
+					}
+					p.stats[i] = Integer.parseInt(stats[i]);
+				}
 				p.tier = rs.getString("tier");
-				type1Holder = Integer.parseInt(rs.getString("type0"));
-				type2Holder = Integer.parseInt(rs.getString("type1"));
+				String[] types = new String[2];
+				types[0] = rs.getString("type0");
+				types[1] = rs.getString("type1");
+				if(types[0].isEmpty())
+					type1Holder = -1;
+				else
+					type1Holder = Integer.parseInt(types[0]);
+				if(types[1] == null || types[1].isEmpty())
+					type2Holder = -1;
+				else
+					type2Holder = Integer.parseInt(rs.getString("type1"));
 				++count;
 			}
 			p.types[0] = Type.fromSQL(type1Holder);

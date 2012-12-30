@@ -9,6 +9,7 @@
 package geniusect;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -110,6 +111,14 @@ public class Pokemon {
 		}
 		if(enemy != null)
 			enemy.enemy = this;
+		if(moveset[0] == null && team.teamID == 0)
+		{
+			List<String> moves = GeniusectAI.showdown.getMoves();
+			for(int i = 0; i < moves.size(); i++)
+			{
+				moveset[i] = new Move(moves.get(i), this);
+			}
+		}
 		wobbuffet(true);
 		status.resetActive();
 	}

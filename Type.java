@@ -65,6 +65,7 @@ public enum Type {
 					break;
 			case 16:type = Type.Steel;
 					break;
+			default:type = Type.None;
 		}
 		return type;
 	}

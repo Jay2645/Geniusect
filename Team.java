@@ -13,8 +13,17 @@ public class Team {
 	public Team(String input, int id)
 	{
 		teamID = id;
-		//TODO: Mark end of one importable and beginning of another.
-		String[] importable = input.split("\n\n", 6);
+		String imports = input;
+		if(input.startsWith("Team Name: "))
+		{
+			int start = input.indexOf("Team Name: ") + 11;
+			int end = input.indexOf("\n");
+			String t = input.substring(start, end);
+			teamName = t;
+			//System.err.println(teamName);
+			imports = input.substring(end + 1);
+		}
+		String[] importable = imports.split("\n\n", 6);
 		for(int i = 0; i < importable.length; i++)
 		{
 			Spread spread = new Spread(Pokemon.loadFromText(importable[i], this,i), false);
@@ -25,6 +34,8 @@ public class Team {
 	
 	public Pokemon[] team = new Pokemon[6];
 	public int teamID = -1;
+	public String teamName;
+	public String userName = "";
 	public boolean hasInitialized = false;
 	
 	public Pokemon addPokemon(String s)

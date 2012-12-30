@@ -53,7 +53,7 @@ public class Action
 		}
 	}
 	
-	public void sendToShowdown()
+	public void sendToShowdown(Battle b)
 	{
 		if(this instanceof Change)
 		{
@@ -65,6 +65,13 @@ public class Action
 			Attack a = (Attack) this;
 			a.defender.team.team[a.defender.id] = a.defender;
 			a.deploy();
+		}
+		if(GeniusectAI.showdown != null)
+		{
+			if(GeniusectAI.showdown.waitForNextTurn(30))
+				b.newTurn();
+			else
+				b.gameOver(true);
 		}
 	}
 	

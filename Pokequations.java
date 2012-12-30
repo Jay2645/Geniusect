@@ -10,6 +10,8 @@ public class Pokequations {
 	
 	public static Point calculateDamagePercent(Pokemon attacker, Move move, Pokemon defender)
 	{
+		if(defender.boostedStat(Stat.Def) == 0)
+			return new Point(0,0);
 		Point percentage = calculateDamage(attacker, move, defender);
 		//System.out.println(percentage.x+", "+defender.boostedStat(Stat.HP));
 		percentage.x = percentage.x / (defender.boostedStat(Stat.HP) / 100);
@@ -26,7 +28,7 @@ public class Pokequations {
 	{
 		//System.out.println("Calculating the damage if "+attacker.name+" uses "+move.name+" on "+defender.name);
 		//Returns damage dealt as a point(minValue, maxValue).
-		if(move.status)
+		if(move.status || defender.boostedStat(Stat.Def) == 0)
 		{
 			//System.out.println(move.name+" is a status-inflicting move, so it doesn't do any damage.");
 			return new Point(0,0);
@@ -56,6 +58,8 @@ public class Pokequations {
 	
 	private static Point calculateDamage(int level, int attackStat, int attackPower, int defenseStat, boolean stab, double multiplier)
 	{
+		if(defenseStat == 0)
+			return new Point(0,0);
 		//Returns damage dealt as a point(minValue, maxValue).
 		double bonus = 1;
 		if(stab)
@@ -293,7 +297,7 @@ public class Pokequations {
 		{
 			if(moveset[i] == null || moveset[i].disabled)
 			{
-				System.err.println(moveset[i]+" is null or disabled!");
+				System.err.println(attacker.name+"'s move "+moveset[i]+" is null or disabled!");
 				continue;
 			}
 			if(use == null)

@@ -65,7 +65,17 @@ public class Attack extends Action {
 				System.err.println("Damage done: "+damageDone+"%");
 			return damageDone;
 		}
-		//TODO: Showdown hookup.
+		else if(GeniusectAI.showdown != null)
+		{
+			try
+			{
+				GeniusectAI.showdown.doMove(move.name);
+			}
+			catch (Exception e)
+			{
+				System.err.println(attacker.name+" could not do move "+move.name+"! Exception data:\n"+e);
+			}
+		}
 		return 0;
 	}
 	
