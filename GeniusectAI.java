@@ -127,6 +127,15 @@ public class GeniusectAI {
 											"\n- Wish" +
 											"\n- Seismic Toss" +
 											"\n" +
+											"\nLatios @ Choice Specs" +
+											"\nTrait: Levitate" +
+											"\nEVs: 6 HP / 252 SAtk / 252 Spd" +
+											"\nTimid Nature" +
+											"\n- Surf" +
+											"\n- Psyshock" +
+											"\n- Draco Meteor" +
+											"\n- Hidden Power" +
+											"\n" +
 											"\nConkeldurr @ Leftovers" +
 											"\nTrait: Guts" +
 											"\nEVs: 120 HP / 252 Atk / 136 SDef" +
@@ -146,7 +155,21 @@ public class GeniusectAI {
 											"\n- Dragon Pulse";
 	
 	
-	public static int turnsToSimulate = 100; //How many turns we simulate, if Showdown is not running?
+	public static int turnsToSimulate = 50; //How many turns we simulate, if Showdown is not running?
+	
+	public static void main(String[] args) {
+    	/*
+        WebDriver driver = new FirefoxDriver();
+        Showdown showdown = new Showdown(driver);
+ 
+        driver.get(showdown.rooturl);
+       
+        showdown.login();        
+        */
+    	GeniusectAI.battleStart();
+    }
+	
+	
 	
 	public static void battleStart()
 	{
@@ -170,7 +193,10 @@ public class GeniusectAI {
 	{
 		if(!playing)
 			return;
-		turnCount++;		
+		if(showdown == null)
+			turnCount++;		
+		else
+			turnCount = showdown.getCurrentTurn();
 		System.err.println("\n\n\n*******************************TEAM "+teamID+", TURN "+(turnCount / 2)+"*******************************");
 		System.err.println("**************************ACTIVE POKEMON: "+Pokemon.active[teamID].name+"**************************");
 		if(showdown != null && turnCount % 5 == 0)
@@ -201,32 +227,66 @@ public class GeniusectAI {
 		//else if(genetic)
 			//nextTurn = TODO;
 		simulating = false;
-		nextTurn.sendToShowdown();
+		if(showdown == null)
+		{
+			if(turnCount % 2 == 1)
+			{
+				if(nextTurn instanceof Change) //Always change first.
+				{
+					Change c = (Change)nextTurn;
+					c.sendToShowdown();
+					if(lastTurnEnemy instanceof Attack)
+					{
+						Attack a = (Attack)lastTurnEnemy;
+						a.defenderSwap(c.switchTo);
+					}
+				}
+				if(lastTurnEnemy instanceof Change)
+				{
+					Change c = (Change)lastTurnEnemy;
+					c.sendToShowdown();
+					if(nextTurn instanceof Attack)
+					{
+						Attack a = (Attack)nextTurn;
+						a.defenderSwap(c.switchTo);
+					}
+				}
+				if(Pokemon.active[teamID].isFasterThan(Pokemon.active[enemyID])) //Check who is faster.
+				{	//Things won't send if they've already been sent, so we don't need to check if we've already sent it.
+					nextTurn.sendToShowdown();
+					lastTurnEnemy.sendToShowdown();
+				}
+				else
+				{
+					lastTurnEnemy.sendToShowdown();
+					nextTurn.sendToShowdown();
+				}
+			}
+			swapSides();
+		}
+		else
+			nextTurn.sendToShowdown();
 	}
 	
 	public static void swapSides()
 	{
 		//If there's no Showdown running, play against ourselves.
-		if(showdown == null)
+		if(showdown != null || !playing)
+			return;
+		if(turnCount % 5 != 0)
+			System.out.println("***THIS IS BEING PRINTED FOR DEBUGGING PURPOSES.***\n(It would not be printed in an actual battle.)");
+		lastTurnLogic();
+		int e = teamID;
+		teamID = enemyID;
+		enemyID = e;
+		Team t = us;
+		us = enemy;
+		enemy = t;
+		if(playing)
 		{
-			if(turnCount % 5 != 0)
-				System.out.println("***THIS IS BEING PRINTED FOR DEBUGGING PURPOSES.***\n(It would not be printed in an actual battle.)");
-			lastTurnLogic();
-			int e = teamID;
-			teamID = enemyID;
-			enemyID = e;
-			Team t = us;
-			us = enemy;
-			enemy = t;
-			if(playing)
-			{
-				turnsToSimulate--;
-				if(turnsToSimulate > 0)
-				{
-					Pokemon.active[teamID].onNewTurn();
-					newTurn();
-				}
-			}
+			turnsToSimulate--;
+			if(turnsToSimulate > 0)
+				newTurn();
 		}
 	}
 	
@@ -336,7 +396,10 @@ public class GeniusectAI {
 	
 	public static void lastTurnLogic()
 	{
-		print("This is the logic I used last turn (turn "+(turnCount - 1)+").");
+		int count = turnCount - 1;
+		if(showdown == null)
+			count = turnCount / 2;
+		print("This is the logic I used last turn (turn "+count+").");
 		if(genetic)
 		{
 			print("I used Genetic Algorithms (http://en.wikipedia.org/wiki/Genetic_algorithm) to determine what to do.");
@@ -355,9 +418,9 @@ public class GeniusectAI {
 	
 	public static void printEnemy()
 	{
+		print("I am using a "+Pokemon.active[teamID].name+" with "+Pokemon.active[teamID].hpPercent+"% health.");
 		print("Here's what I know about the enemy's "+Pokemon.active[enemyID].name);
 		print("It has "+Pokemon.active[enemyID].hpPercent+"% HP.");
-		print("It is level "+Pokemon.active[enemyID].level);
 		print("Its types are "+Pokemon.active[enemyID].types[0]+" and "+Pokemon.active[enemyID].types[1]);
 		print("Its nature is "+Pokemon.active[enemyID].nature.toString());
 		if(Pokemon.active[enemyID].ability != null)
@@ -379,11 +442,6 @@ public class GeniusectAI {
 				continue;
 			}
 			print(Pokemon.active[enemyID].moveset[i].name);
-		}
-		print("I believe its stats are about:");
-		for(int i = 0; i < Pokemon.active[enemyID].stats.length; i++)
-		{
-			print(Stat.fromInt(i)+": "+Pokemon.active[enemyID].stats[i]);
 		}
 		print("I think it has an EV spread of:");
 		for(int i = 0; i < Pokemon.active[enemyID].evs.length; i++)

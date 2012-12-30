@@ -50,6 +50,7 @@ public class Pokemon {
 	protected Status status = Status.None; //What permanent status do we have (i.e. Poison, Burn, etc.)?
 	protected ArrayList<VolatileStatus> effects = new ArrayList<VolatileStatus>(); //What temporary status do we have (i.e. Confused, Taunt, etc.)?
 	protected Pokemon enemy;
+	protected int damageDoneLastTurn;
 	
 	public Pokemon() {}
 	
@@ -137,15 +138,6 @@ public class Pokemon {
 		else return change.switchTo;
 	}
 	
-	public int onNewTurn()
-	{
-		if(hpPercent <= 0)
-		{
-			onDie();
-		}
-		return hpPercent;
-	}
-	
 	public int onNewAttack(Attack a)
 	{
 		//Called when predicting future events.
@@ -160,7 +152,9 @@ public class Pokemon {
 			effects.get(i).onNewTurn();
 		}
 		damage((int)Math.round(status.onNewTurn()));
-		return preHP - hpPercent;
+		//System.err.println("PreHP: "+preHP+", HP percent: "+hpPercent);
+		damageDoneLastTurn = preHP - hpPercent;
+		return damageDoneLastTurn;
 	}
 	
 	public void onNewTurn(String n, int damageDone, boolean crit)
@@ -203,8 +197,7 @@ public class Pokemon {
 		hpPercent -= damagePercent;
 		if(hpPercent < 0)
 			hpPercent = 0;
-		alive = hpPercent > 0;
-		return alive;
+		return isAlive();
 	}
 	
 	public boolean damage(Attack attack)
@@ -223,8 +216,18 @@ public class Pokemon {
 	 * 
 	 */
 	
+	public int checkHP()
+	{
+		if(hpPercent <= 0 && alive)
+		{
+			onDie();
+		}
+		return hpPercent;
+	}
+	
 	public boolean isAlive()
 	{
+		checkHP();
 		return alive;
 	}
 	
@@ -267,6 +270,11 @@ public class Pokemon {
 	public int getHealth()
 	{
 		return hpPercent;
+	}
+	
+	public int getDamageDone()
+	{
+		return damageDoneLastTurn;
 	}
 	
 	public boolean hasMove(String moveName)

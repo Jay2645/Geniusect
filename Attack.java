@@ -47,12 +47,26 @@ public class Attack extends Action {
 	public int deploy()
 	{
 		//Send next Attack to Showdown.
-		//TODO: Showdown hookup.
-		if(GeniusectAI.showdown == null)
+		if(sent)
+			return defender.getDamageDone();
+		System.err.println(attacker.name+" used "+move.name+"!");
+		sent = true;
+		if(!sayOnSend.equals(""))
 		{
-			return defender.onNewAttack(this);
+			GeniusectAI.print(sayOnSend);
+			sayOnSend = "";
 		}
-		else return 0;
+		if(GeniusectAI.showdown == null || GeniusectAI.simulating)
+		{
+			if(!attacker.isAlive()) //We can only attack if we're alive.
+				return 0;
+			int damageDone = defender.onNewAttack(this);
+			if(defender.isAlive())
+				System.err.println("Damage done: "+damageDone+"%");
+			return damageDone;
+		}
+		//TODO: Showdown hookup.
+		return 0;
 	}
 	
 	public void defenderSwap(Pokemon newDefend)

@@ -29,6 +29,13 @@ public class Team {
 	
 	public Pokemon addPokemon(String s)
 	{
+		for(int i = 0; i < team.length; i++)
+		{
+			if(team[i] == null)
+				break;
+			if(team[i].name.equals(s))
+				return team[i];
+		}
 		Pokemon p = new Pokemon();
 		p.name = s;
 		return addPokemon(p);

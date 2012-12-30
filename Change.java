@@ -18,10 +18,21 @@ public class Change extends Action {
 	public void deploy()
 	{
 		//Send next Pokemon to Showdown.
-		//TODO: Showdown hookup.
-		if(GeniusectAI.showdown == null)
+		if(sent)
+			return;
+		//System.err.println("Sending to showdown on turn "+GeniusectAI.turnCount / 2);
+		System.err.println("Go, "+switchTo.name+"!");
+		if(GeniusectAI.showdown == null || GeniusectAI.simulating)
 		{
 			switchTo.onSendOut();
+			
+		}
+		//TODO: Showdown hookup.
+		sent = true;
+		if(!sayOnSend.equals(""))
+		{
+			GeniusectAI.print(sayOnSend);
+			sayOnSend = "";
 		}
 	}
 	
@@ -59,7 +70,7 @@ public class Change extends Action {
 	
 	public static Pokemon bestChange(Pokemon us, Pokemon[] ourTeam, Pokemon enemy, Move predictedMove)
 	{
-		if(us.hasMove("Destiny Bond")) //Try to take opponent with us if we can.
+		if(changedRecently() || us.hasMove("Destiny Bond")) //Make sure this is a sane thing to do, and then try to take opponent with us if we can.
 			return us;
 		int damageStayIn = Pokequations.calculateDamagePercent(enemy, predictedMove, us).y;
 		Pokemon change = us;
@@ -95,6 +106,16 @@ public class Change extends Action {
 				continue;
 		}
 		return change;
+	}
+	
+	private static boolean changedRecently()
+	{
+		int sanity = changeCount;
+		if(GeniusectAI.showdown == null)
+			sanity /= 2;
+		if(sanity >= 3)
+			return true;
+		else return false;
 	}
 	
 	private static boolean sanityCheck(Pokemon saneSwitch, Pokemon enemy, int switchDamage)
