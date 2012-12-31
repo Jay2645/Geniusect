@@ -118,9 +118,12 @@ public class Battle {
 	public int turnsToSimulate = 50; //How many turns we simulate, if Showdown is not running?
 	public int turnCount = 1; //The current turn.
 	public boolean playing = false; // TRUE if we have found a battle.
+	public boolean firstTurn = true; // TRUE if it is the first turn.
 	public Action nextTurn;
 	public Action lastTurnUs;
 	public Action lastTurnEnemy;
+	
+	public static String criticalErrors = "Errors:\n";
 	
 	public boolean findBattle()
 	{
@@ -145,6 +148,14 @@ public class Battle {
 			catch(Exception e)
 			{
 				System.err.println("Geniusect battle search has failed! Exception data: "+e);
+				try
+				{
+					GeniusectAI.showdown.leaveBattle();
+				}
+				catch (Exception l)
+				{
+					System.err.println("Could not leave battle. Exception data: "+e);
+				}
 				return false;
 			}
 		}
@@ -153,13 +164,11 @@ public class Battle {
 	
 	public void battleStart()
 	{
+		//Called when the battle begins.
 		System.err.println(GeniusectAI.showdown);
 		turnsToSimulate *= 2;
 		GeniusectAI.battleCount++;
 		playing = true;
-		//Called when the battle begins.
-		//Can load a team from an importable.
-		GeniusectAI.displayIntro();
 		if(us == null)
 			us = new Team(0);
 		Team enemy;
@@ -199,23 +208,20 @@ public class Battle {
 		
 		System.err.println("\n\n\n*******************************TEAM "+teamID+", TURN "+(turnNumber)+"*******************************");
 		System.err.println("**************************ACTIVE POKEMON: "+Pokemon.active[teamID].name+"**************************");
-		if(GeniusectAI.showdown != null && turnCount % 5 == 0)
-			GeniusectAI.lastTurnLogic();
+		System.err.println(criticalErrors);
+		//if(GeniusectAI.showdown != null && turnCount % 5 == 0)
+			//GeniusectAI.lastTurnLogic();
 		if(GeniusectAI.showdown == null)
 			lastTurnEnemy = nextTurn;
 		else
 		{
+			if(nextTurn != null)
+				nextTurn.updateLastTurn();
 			lastTurnUs = nextTurn;
-			//TODO:	FETCH:
-			//		- Enemy Pokemon
-			//		- Our HP
-			//		- Enemy HP
 			//		- Enemy move used (and if any boosts were obtained)
 			//		- The PP of the move we just used (and if any boosts were obtained)
 			//		CHECK:
 			//		- If we died (and change using generic logic if so)
-			//		- Actual damage done (predicted versus actual)
-			//		- If move was a crit.
 			//		- Status inflicted
 			//		- Entry hazards placed
 		}

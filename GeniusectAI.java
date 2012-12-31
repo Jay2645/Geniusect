@@ -46,7 +46,6 @@ public class GeniusectAI {
 	public static int winCount = 0;
 	public static int lossCount = 0;
 	
-	
 	public static void main(String[] args) {
 		WebDriver driver = new FirefoxDriver();
     	// wait up to 10 seconds for elements to load
@@ -67,7 +66,7 @@ public class GeniusectAI {
 			}
 			catch(Exception e)
 			{
-				System.err.println("Could not log in! Exception data: "+e);
+				System.err.println("Could not log in! Exception data: \n"+e);
 				return;
 			}
 	        battle = new Battle();
@@ -79,8 +78,8 @@ public class GeniusectAI {
 	
 	public static void displayIntro()
 	{
-		print("Geniusect version "+version+" has entered a battle. Session battle count: "+battleCount);
-		print("Hello! You are playing against an AI. Occasionally I might get hung up while making a move.");
+		print("Geniusect version "+version+" by rissole and Team Forretress. Session battle count: "+battleCount);
+		print("Hello! You are playing against an AI early in development, coded in Java.");
 		print("If you suspect I'm not responding, feel free to hit 'Kick Inactive Player.'");
 	}
 	
@@ -169,6 +168,7 @@ public class GeniusectAI {
 		System.err.println("Game over.");
 		if(simulating)
 			return;
+		System.err.println(Battle.criticalErrors);
 		battle.playing = false;
 		battle.turnsToSimulate = 0;
 		battle = null;
@@ -185,7 +185,7 @@ public class GeniusectAI {
 		}
 		print("Geniusect win : loss ratio is "+winCount +" : "+ lossCount);
 		if(showdown != null)
-			showdown.surrender();
+			showdown.leaveBattle();
 	}
 	
 	public static Action bestMove()
@@ -198,6 +198,8 @@ public class GeniusectAI {
 		Action doNext;
 		if(shouldSwitch(ourGuy,theirGuy))
 		{
+			if(ourGuy.team == null)
+				ourGuy.team = theirGuy.enemyTeam;
 			Change sanityCheck = new Change(Change.bestChange(ourGuy, ourGuy.team.team, theirGuy, Pokequations.bestMove(theirGuy, ourGuy)));
 			if(sanityCheck.switchTo.name.toLowerCase().startsWith(ourGuy.name.toLowerCase()))
 				doNext = new Attack(ourBestMove,ourGuy,theirGuy);
@@ -250,6 +252,7 @@ public class GeniusectAI {
 			count = battle.turnCount / 2;
 		else
 			count = battle.turnCount = showdown.getCurrentTurn();
+		print("*********GENIUSECT DEBUG LOG*********");
 		print("This is the logic I used last turn (turn "+count+").");
 		if(genetic)
 		{
@@ -409,10 +412,21 @@ public class GeniusectAI {
 	{
 		//Text to send to Showdown.
 		System.err.println("Sending text to chat.");
-		if(showdown == null)
+		//if(showdown == null)
 			System.out.println("BATTLE CHAT: "+text);
-		else
-			showdown.sendMessage(text);
+		/*else
+		{
+			try
+			{
+				showdown.sendMessage(text);
+			}
+			catch (Exception e)
+			{
+				System.err.println("Could not print to chat!");
+				System.err.println("Chat log: "+text);
+				System.err.println("Exception data: "+e);
+			}
+		}*/
 	}
 	
 	public static void setGenetic()

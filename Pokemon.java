@@ -25,10 +25,6 @@ public class Pokemon {
 	public Nature nature = Nature.Hardy;
 	public String tier;
 	
-	public ArrayList<Type> quadrupleEffective = new ArrayList<Type>();
-	public ArrayList<Type> superEffective = new ArrayList<Type>();
-	public ArrayList<Type> resistances = new ArrayList<Type>();
-	public ArrayList<Type> doubleResistances = new ArrayList<Type>();
 	public ArrayList<Type> immunities = new ArrayList<Type>();
 	
 	public Move[] moveset = {null,null,null,null};
@@ -48,9 +44,11 @@ public class Pokemon {
 	protected boolean canMove = true; //Can we move?
 	protected boolean canSwitch = true; //Can we switch?
 	protected boolean charged = false; //Is our move recharged?
+	protected Move lockedInto = null; //Are we locked into a move (i.e. Outrage, Choice, etc.)?
 	protected Status status = Status.None; //What permanent status do we have (i.e. Poison, Burn, etc.)?
 	protected ArrayList<VolatileStatus> effects = new ArrayList<VolatileStatus>(); //What temporary status do we have (i.e. Confused, Taunt, etc.)?
 	protected Pokemon enemy;
+	protected Team enemyTeam;
 	protected int damageDoneLastTurn;
 	
 	public Pokemon() {}
@@ -64,6 +62,7 @@ public class Pokemon {
 	{
 		name = n;
 		team = t;
+		enemyTeam = Team.getEnemyTeam(team.teamID);
 		id = i;
 		query();
 	}
@@ -74,10 +73,11 @@ public class Pokemon {
 		stats = Pokequations.calculateStat(this);
 		boostedStats = stats;
 		fullHP = boostedStats[Stat.HP.toInt()];
-		if(active[team.teamID] == null)
-		{
-			onSendOut();
-		}
+		if(team == null && enemy == null)
+			team = Team.players[1];
+		else if(team == null)
+			team = enemy.enemyTeam;
+		onSendOut();
 	}
 	
 	public void onSendOut()
@@ -111,14 +111,7 @@ public class Pokemon {
 		}
 		if(enemy != null)
 			enemy.enemy = this;
-		if(moveset[0] == null && team.teamID == 0)
-		{
-			List<String> moves = GeniusectAI.showdown.getMoves();
-			for(int i = 0; i < moves.size(); i++)
-			{
-				moveset[i] = new Move(moves.get(i), this);
-			}
-		}
+		getMoves();
 		wobbuffet(true);
 		status.resetActive();
 	}
@@ -130,12 +123,14 @@ public class Pokemon {
 			active[team.teamID] = null;
 		resetBoosts();
 		effects.clear();
+		lockedInto = null;
 		wobbuffet(false);
 	}
 	
 	public Pokemon onDie()
 	{
 		//Called when the Pokemon dies.
+		hpPercent = 0;
 		if(!GeniusectAI.simulating)
 			team.team[id] = this;
 		System.err.println(name+" has died!");
@@ -145,6 +140,18 @@ public class Pokemon {
 		if(change == null)
 			return null;
 		else return change.switchTo;
+	}
+	
+	public void getMoves()
+	{
+		if(team.teamID == 0 && GeniusectAI.showdown != null)
+		{
+			List<String> moves = GeniusectAI.showdown.getMoves();
+			for(int i = 0; i < moves.size(); i++)
+			{
+				moveset[i] = new Move(moves.get(i), this);
+			}
+		}
 	}
 	
 	public int onNewAttack(Attack a)
@@ -172,11 +179,27 @@ public class Pokemon {
 		//Keeps track of what moves THIS Pokemon has done (if unknown) and what damage they did to the enemy.
 		for(int i = 0; i < moveset.length; i++)
 		{
-			if(moveset[i].name.toLowerCase().startsWith("Struggle") && !n.toLowerCase().startsWith("Struggle"))
+			if(moveset[i] == null || moveset[i].name.toLowerCase().startsWith("struggle") && !n.toLowerCase().startsWith("struggle"))
 			{
 				moveset[i] = new Move(n,this);
-				if(n.toLowerCase().startsWith("Hidden Power"))
-					moveset[i] = new HiddenPower(moveset[i]);
+				if(n.toLowerCase().startsWith("hidden power"))
+				{
+					moveset[i] = new HiddenPower(moveset[i]); 
+					if(team.teamID == 0)
+					{
+						List<String> hpType = GeniusectAI.showdown.getMoves();//Will need to be changed later.
+						for(int r = 0; r < hpType.size(); r++)
+						{
+							if(hpType.get(r).toLowerCase().startsWith("hidden power"))
+							{
+								System.err.println(hpType.get(r));
+							}
+						}
+						//moveset[i].type
+					}
+				}
+				if(enemy == null)
+					enemy = active[enemyTeam.teamID]; //So we can properly simulate the right team.
 				moveset[i].onMoveUsed(enemy, damageDone, crit);
 				break;
 			}
@@ -290,6 +313,8 @@ public class Pokemon {
 	{
 		for(int i = 0; i < moveset.length; i++)
 		{
+			if(moveset[i] == null)
+				continue;
 			if(moveset[i].name.toLowerCase().startsWith(moveName))
 			{
 				return true;
@@ -303,6 +328,11 @@ public class Pokemon {
 		inflictStatus(VolatileStatus.Charging);
 		canMove = false;
 		canSwitch = false;
+	}
+	
+	public void setAbility(String a)
+	{
+		ability = new Ability(a);
 	}
 	
 	/*
@@ -382,6 +412,7 @@ public class Pokemon {
 		else if(boosts[boost.toInt()] < -6)
 			boosts[boost.toInt()] = -6;
 		boostedStats[boost.toInt()] = Pokequations.statBoost(boosts[boost.toInt()],stats[boost.toInt()]);
+		System.err.println(name+"'s new "+boost+" stat is "+boosts[boost.toInt()]);
 	}
 	
 	public int hpToPercent()
@@ -433,10 +464,6 @@ public class Pokemon {
 		nature = clone.nature;
 		tier = clone.tier;
 		
-		quadrupleEffective = clone.quadrupleEffective;
-		superEffective = clone.superEffective;
-		resistances = clone.resistances;
-		doubleResistances = clone.doubleResistances;
 		immunities = clone.immunities;
 		
 		moveset[0] = new Move(clone.moveset[0]);

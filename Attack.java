@@ -74,6 +74,12 @@ public class Attack extends Action {
 			catch (Exception e)
 			{
 				System.err.println(attacker.name+" could not do move "+move.name+"! Exception data:\n"+e);
+				GeniusectAI.print("Exception! "+attacker.name+" could not do move "+move.name+"!");
+				Action a = onException(this, e);
+				if(a instanceof Attack)
+					((Attack) a).deploy();
+				else if(a instanceof Change)
+					((Change) a).deploy();
 			}
 		}
 		return 0;

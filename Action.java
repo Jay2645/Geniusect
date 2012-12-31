@@ -5,13 +5,17 @@
 
 package geniusect;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class Action 
 {
 	public String name = "";
 	protected String sayOnSend = "";
-	boolean crit = false;
-	boolean sent = false;
+	protected boolean crit = false;
+	protected boolean sent = false;
 	public int score = 0; //The minimax score for this action.
+	public int attempt = 0; //How many times we've attempted to try this.
 	
 	public static int changeCount = 0; //How many times in a row have we changed? (Sanity check.)
 	
@@ -20,16 +24,16 @@ public class Action
 	{
 		if(GeniusectAI.showdown != null)
 		{
-			@SuppressWarnings("unused")
 			String lastTurn = GeniusectAI.showdown.getLastTurnText();
-			boolean switched = false;
-			//TODO:	Regex to check if someone has switched.
-			//		Get what they switched to
-			//		Check if we've already seen it
+			if(lastTurn.contains("~printLogic"))
+				GeniusectAI.lastTurnLogic();
+			boolean switched = findPokemon(lastTurn);
+			findMove(lastTurn);
+			//TODO:	Update Pokemon of both teams.
 			if(switched && this instanceof Attack)
 			{
 				Attack a = (Attack)this;
-				a.defenderSwap(a.defender);
+				a.defenderSwap(Pokemon.active[1]);
 			}
 		}
 	}
@@ -66,9 +70,12 @@ public class Action
 			a.defender.team.team[a.defender.id] = a.defender;
 			a.deploy();
 		}
+		if(b.firstTurn)
+			GeniusectAI.displayIntro();
+		b.firstTurn = false;
 		if(GeniusectAI.showdown != null)
 		{
-			if(GeniusectAI.showdown.waitForNextTurn(30))
+			if(GeniusectAI.showdown.waitForNextTurn(5))
 				b.newTurn();
 			else
 				b.gameOver(true);
@@ -78,5 +85,253 @@ public class Action
 	public void say(String text)
 	{
 		//Says some text at the end of a turn.
+		GeniusectAI.print(text);
+	}
+	
+	/*public static void main(String[] args) {
+		String log = "Turn 14" +
+				"\nThe foe's Cloyster used Shell Smash!" +
+				"\nThe foe's Cloyster's Attack sharply rose!" +
+				"\nThe foe's Cloyster's Special Attack sharply rose!" +
+				"\nThe foe's Cloyster's Speed sharply rose!" +
+				"\nThe foe's Cloyster's Defense fell!" +
+				"\nThe foe's Cloyster's Special Defense fell!" +
+				"\nThe foe's Cloyster restored its status using White Herb!" +
+				"\nLatios used Draco Meteor!" +
+				"\nA critical hit! The foe's Cloyster lost 75% of its health!" +
+				"\nLatios's Special Attack harshly fell!" +
+				"\nThe foe's Cloyster fainted!";
+		
+		findMove(log);
+	}*/
+	
+	protected static void findMove(String text)
+	{	//Takes a string of the last turn's events, finds all moves used and their damage, then updates HP and Pokemon.
+		Pattern p = Pattern.compile("(.+) used (.+)!", Pattern.MULTILINE);
+		Matcher m = p.matcher(text);
+		Team t = null;
+		//Team.players[0] = new Team(0);
+		//Team.players[1] = new Team(1);
+		while(m.find())
+		{
+			String tempname = text.substring(m.start(1), m.end(1));
+			if(tempname.contains("The foe's"))
+			{
+				t = Team.players[1];
+				tempname = stripFoe(tempname);
+			}
+			else
+				t = Team.players[0];
+			Pokemon poke = t.addPokemon(tempname);
+			String tempmove = text.substring(m.start(2), m.end(2));
+			String moveDamage = text.substring(m.end(2));
+			boolean crit = false;
+			int dmg = 0;
+			Pattern dmgP = Pattern.compile("(.+) lost (.+)%");
+			Matcher dmgM = dmgP.matcher(moveDamage);
+			if(dmgM.find())
+			{
+				String damage = moveDamage.substring(dmgM.start(1),dmgM.end(2));
+				if(!damage.contains(tempname))
+				{
+					crit = damage.contains("critical hit");
+					damage = moveDamage.substring(dmgM.start(2),dmgM.end(2));
+					dmg = Integer.parseInt(damage);
+				}
+			}
+			System.out.println(tempname+" used "+tempmove+" for "+dmg+"% damage. Was it a crit? "+crit);
+			System.err.println(tempname+"'s enemy is "+poke.enemy);
+			poke.onNewTurn(tempmove, dmg, crit);
+		}
+		findDrops(text);
+	}
+	
+	protected static void findDrops(String text)
+	{
+		Pattern whP = Pattern.compile("(.+) restored its status using White Herb!");
+		Matcher whM = whP.matcher(text);
+		String[] restore = new String[2];
+		while(whM.find())
+		{
+			String herb = text.substring(whM.start(1),whM.end(1));
+			if(herb.contains("The foe's"))
+			{
+				herb = stripFoe(herb);
+				restore[1] = herb;
+			}
+			else
+				restore[0] = herb;
+		}
+		Pattern p = Pattern.compile("(.+)'s (.+) (fell|rose)!",Pattern.MULTILINE);
+		Matcher m = p.matcher(text);
+		Team t = null;
+		while(m.find())
+		{
+			String temp = text.substring(m.start(1),m.end(1));
+			String herb;
+			if(temp.contains("The foe's"))
+			{
+				t = Team.players[1];
+				temp = stripFoe(temp);
+				herb = restore[1];
+			}
+			else
+			{
+				t = Team.players[0];
+				herb = restore[0];
+			}
+			Pokemon poke = t.addPokemon(temp);
+			String stat = text.substring(m.start(2),m.end(2));
+			int level = 1;
+			if(stat.contains("harshly")||stat.contains("sharply"))
+			{
+				String twoStage;
+				if(stat.contains("harshly"))
+					twoStage = "harshly";
+				else
+					twoStage = "sharply";
+				level = 2;
+				stat = stat.substring(0, stat.indexOf(twoStage));
+			}
+			else if(stat.contains("drastically")||stat.contains("dramatically"))
+			{
+				String threeStage;
+				if(stat.contains("drastically"))
+					threeStage = "drastically";
+				else
+					threeStage = "dramatically";
+				level = 3;
+				stat = stat.substring(0,stat.indexOf(threeStage));
+			}
+			Stat st = Stat.fromString(stat);
+			String rose = text.substring(m.start(3),m.end(3));
+			if(rose.toLowerCase().startsWith("fell"))
+			{
+				if(herb == null)
+					level *= -1;
+				else
+				{
+					System.out.println(poke.name+" restored its negative stat drop!");
+					level = 0;
+				}
+			}
+			if(level != 0)
+				poke.giveBoosts(st, level);
+		}
+	}
+	
+	protected static String stripFoe(String tempname)
+	{	//Strips "The foe's " from a result to give you just the Pokemon name.
+		String f = "";
+		Pattern foeP = Pattern.compile("The foe's (.+)");
+		Matcher foeM = foeP.matcher(tempname);
+		foeM.find();
+		if (foeM.end(1) - foeM.start(1) > 1)
+		{
+			f = foeM.group(1);
+		}
+		else
+		{
+			f = tempname.substring(0, foeM.start(1) - 2);
+		}
+		return f;
+	}
+	
+	protected static boolean findPokemon(String text)
+	{	//Takes a string of the last turn's events, finds any Pokemon that were sent out, and marks them as active.
+		boolean switched = false;
+		String[] owner = new String[2];
+		String[] pokemon = new String[2];
+		owner[0] = Team.players[0].userName;
+		owner[1] = Team.players[1].userName;
+		Pattern faintP = Pattern.compile("(.+) fainted!", Pattern.MULTILINE);
+		Matcher faintM = faintP.matcher(text);
+		while(faintM.find())
+		{
+			String faint = text.substring(faintM.start(1), faintM.end(1));
+			Team t;
+			if(faint.contains("The foe's "))
+			{
+				faint = stripFoe(faint);
+				t = Team.players[1];
+			}
+			else
+				t = Team.players[0];
+			Pokemon poke = t.addPokemon(faint);
+			poke.onDie();
+		}
+		Pattern p = Pattern.compile(" sent out (.+)!", Pattern.MULTILINE);
+		Matcher m = p.matcher(text);
+		for(int i = 0; i < owner.length; i++)
+		{
+			if(owner[i].equals(""))
+				continue;
+			if(m.find())
+			{
+				String tempname = text.substring(m.start(1), m.end(1));
+				if(tempname.contains("("))
+				{
+					String f = "";
+					Pattern nameP = Pattern.compile(" \\((.+?)\\)");
+					Matcher nameM = nameP.matcher(tempname);
+					nameM.find();
+					if (nameM.end(1) - nameM.start(1) > 1)
+					{
+						f = nameM.group(1);
+					}
+					else
+					{
+						f = tempname.substring(0, nameM.start(1) - 2);
+					}
+					tempname = f;
+				}
+				System.err.println(tempname);
+				pokemon[i] = tempname;
+			}
+			if(pokemon[i] != null)
+			{
+				Pokemon poke = Team.players[i].addPokemon(pokemon[i]);
+				poke.onSendOut();
+				switched = true;
+			}
+		}
+		return switched;
+	}
+	
+	protected static Action onException(Action failure, Exception e)
+	{
+		//Called if everything breaks.
+		if(failure.attempt == 0)
+		{
+			GeniusectAI.print("Here's what I tried to do:");
+			GeniusectAI.lastTurnLogic();
+			GeniusectAI.print(Battle.criticalErrors);
+			Battle.criticalErrors = Battle.criticalErrors + "\n" + e;
+			e.printStackTrace();
+		}
+		else if(failure.attempt > 4)
+		{
+			GeniusectAI.print("Failed!");
+			GeniusectAI.print("Sorry! Geniusect is still in early development and is very buggy.");
+			GeniusectAI.print("If I don't leave, please hit the 'Kick inactive player button.'");
+			GeniusectAI.showdown.leaveBattle();
+			GeniusectAI.battle.playing = false;
+			GeniusectAI.battle = null;
+			return null;
+		}
+		GeniusectAI.print("Attempting to rectify: attempt number "+failure.attempt+" / 4");
+		Action a;
+		if(Pokemon.active[0].isAlive())
+		{
+			GeniusectAI.showdown.getMoves();
+			a = GeniusectAI.bestMove();
+		}
+		else
+		{
+			Pokemon p = Change.bestCounter(Team.players[0].team,Pokemon.active[1]);
+			a = new Change(p);
+		}
+		a.attempt = failure.attempt + 1;
+		return a;
 	}
 }

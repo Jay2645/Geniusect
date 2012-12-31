@@ -13,4 +13,5 @@ public class Ability {
 		name = n;
 	}
 	public String name;
+
 }

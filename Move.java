@@ -75,6 +75,8 @@ public class Move {
 	public void onMoveUsed(Pokemon enemy, int damageDone, boolean wasCrit)
 	{
 		//Called when this move is used.
+		if(user.item != null && user.item.name.toLowerCase().startsWith("choice"))
+			user.lockedInto = this;
 		if(enemy.ability == null)
 		{
 			pp--;
@@ -87,7 +89,14 @@ public class Move {
 				pp--;
 		}
 		if(0 >= pp)
+		{
 			disabled = true;
+			for(int i = 0; i < user.moveset.length; i++)
+			{
+				if(user.moveset[i].name.equals(name)) //Make SURE it can't use it.
+					user.moveset[i] = null;
+			}
+		}
 		if(!projectedPercent.containsKey(enemy));
 		{
 			adjustProjectedPercent(Pokequations.calculateDamagePercent(user,this,enemy),enemy);

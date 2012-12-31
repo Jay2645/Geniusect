@@ -21,19 +21,35 @@ public class Change extends Action {
 		if(sent)
 			return;
 		//System.err.println("Sending to showdown on turn "+GeniusectAI.turnCount / 2);
-		System.err.println("Go, "+switchTo.name+"!");
-		if(GeniusectAI.showdown == null || GeniusectAI.simulating)
-		{
-			switchTo.onSendOut();
-			
-		}
-		//TODO: Showdown hookup.
+		System.err.println(switchTo.team.userName+" (TeamID "+switchTo.team.teamID+"): Go, "+switchTo.name+"!");
 		sent = true;
 		if(!sayOnSend.equals(""))
 		{
 			GeniusectAI.print(sayOnSend);
 			sayOnSend = "";
 		}
+		if(GeniusectAI.showdown == null || GeniusectAI.simulating)
+		{
+			switchTo.onSendOut();
+		}
+		else if(GeniusectAI.showdown != null)
+		{
+			try
+			{
+				GeniusectAI.showdown.doMove(switchTo.name);
+			}
+			catch (Exception e)
+			{
+				System.err.println("Could not switch to "+switchTo.name+"! Exception data:\n"+e);
+				GeniusectAI.print("Exception! Could not switch to "+switchTo.name+"!");
+				Action a = onException(this, e);
+				if(a instanceof Attack)
+					((Attack) a).deploy();
+				else if(a instanceof Change)
+					((Change) a).deploy();
+			}
+		}
+		switchTo.onSendOut();
 	}
 	
 	public static int calculateSwitchDamagePercent(Pokemon change)
@@ -79,6 +95,8 @@ public class Change extends Action {
 		{
 			if(ourTeam[i] != null && ourTeam[i].isAlive() && ourTeam[i] != us)
 			{
+				if(ourTeam[i].fullHP == 0)
+					ourTeam[i].query();
 				int switchDamage = Pokequations.calculateDamagePercent(enemy, predictedMove, ourTeam[i]).y + calculateSwitchDamagePercent(ourTeam[i]);
 				if(change == us) //If we have not found someone to change to.
 				{

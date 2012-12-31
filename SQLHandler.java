@@ -151,12 +151,14 @@ public class SQLHandler {
 				stats[5] = rs.getString("spe");
 				for(int i = 0; i < stats.length; i++)
 				{
-					if(stats[i].isEmpty())
+					if(p.base[i] != 0)
+						continue;
+					if(stats[i] == null || stats[i].isEmpty())
 					{
 						System.err.println("Could not determine "+currentPokemon+"'s "+Stat.fromInt(i).toString()+" stat!");
 						continue;
 					}
-					p.stats[i] = Integer.parseInt(stats[i]);
+					p.base[i] = Integer.parseInt(stats[i]);
 				}
 				p.tier = rs.getString("tier");
 				String[] types = new String[2];
@@ -174,6 +176,11 @@ public class SQLHandler {
 			}
 			p.types[0] = Type.fromSQL(type1Holder);
 			p.types[1] = Type.fromSQL(type2Holder);
+			if(p.types[0] == Type.None && p.base[Stat.HP.toInt()] == 0)
+			{
+				System.err.println(currentPokemon+" is not in the SQL table!");
+				Battle.criticalErrors = Battle.criticalErrors + "\n"+currentPokemon+" is not in the SQL table!";
+			}
 			System.out.println("Pokemon name: " + currentPokemon);
 			System.out.println("Pokemon type 1: " + p.types[0]);
 			System.out.println("Pokemon type 2: " + p.types[1]);

@@ -10,12 +10,15 @@ public class Pokequations {
 	
 	public static Point calculateDamagePercent(Pokemon attacker, Move move, Pokemon defender)
 	{
-		if(defender.boostedStat(Stat.Def) == 0)
+		if(move.status)
 			return new Point(0,0);
 		Point percentage = calculateDamage(attacker, move, defender);
-		//System.out.println(percentage.x+", "+defender.boostedStat(Stat.HP));
-		percentage.x = percentage.x / (defender.boostedStat(Stat.HP) / 100);
-		percentage.y = percentage.y / (defender.boostedStat(Stat.HP) / 100);
+		if(defender.fullHP == 0)
+			defender.query();
+		if(defender.fullHP == 0) //There's something wrong with the SQL data.
+			return new Point(1,1);
+		percentage.x = percentage.x / (defender.fullHP / 100);
+		percentage.y = percentage.y / (defender.fullHP / 100);
 		return percentage;
 	}
 	public static Point calculateDamage(Spread attacker, Move move, Spread defender)
@@ -28,19 +31,15 @@ public class Pokequations {
 	{
 		//System.out.println("Calculating the damage if "+attacker.name+" uses "+move.name+" on "+defender.name);
 		//Returns damage dealt as a point(minValue, maxValue).
-		if(move.status || defender.boostedStat(Stat.Def) == 0)
-		{
-			//System.out.println(move.name+" is a status-inflicting move, so it doesn't do any damage.");
+		if(move.status)
 			return new Point(0,0);
-		}
 		boolean stab = false;
 		if(attacker.types[0] == move.type || attacker.types[1] == move.type)
 			stab = true;
-		
-		int level = attacker.level;
 		int attackPower = move.power;
 		int attackStat;
 		int defenseStat;
+		int level = attacker.level;
 		if(move.special)
 		{
 			attackStat = attacker.boostedStat(Stat.SpA);
@@ -51,6 +50,8 @@ public class Pokequations {
 			attackStat = attacker.boostedStat(Stat.Atk);
 			defenseStat = defender.boostedStat(Stat.Def);
 		}
+		if(defender.boostedStat(Stat.Def) == 0)
+			defenseStat = 100; //Means we could not look up this Pokemon's defense stat for some reason.
 		double multiplier = damageMultiplier(move.type, defender.types);
 		
 		return calculateDamage(level, attackStat, attackPower, defenseStat, stab, multiplier);
@@ -59,7 +60,7 @@ public class Pokequations {
 	private static Point calculateDamage(int level, int attackStat, int attackPower, int defenseStat, boolean stab, double multiplier)
 	{
 		if(defenseStat == 0)
-			return new Point(0,0);
+			return new Point(1,1);
 		//Returns damage dealt as a point(minValue, maxValue).
 		double bonus = 1;
 		if(stab)
@@ -291,11 +292,13 @@ public class Pokequations {
 	
 	public static Move bestMove(Pokemon attacker, Pokemon defender, Move[] moveset)
 	{
+		if(attacker.lockedInto != null)
+			return attacker.lockedInto;
 		Point damage = new Point(Integer.MIN_VALUE, Integer.MIN_VALUE + 1);
 		Move use = null;
 		for(int i = 0; i < moveset.length; i++)
 		{
-			if(moveset[i] == null || moveset[i].disabled)
+			if(moveset[i] == null || moveset[i].disabled || moveset[i].pp <= 0)
 			{
 				System.err.println(attacker.name+"'s move "+moveset[i]+" is null or disabled!");
 				continue;

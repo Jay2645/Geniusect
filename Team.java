@@ -9,10 +9,12 @@ public class Team {
 	public Team(int id)
 	{
 		teamID = id;
+		players[id] = this;
 	}
 	public Team(String input, int id)
 	{
 		teamID = id;
+		players[id] = this;
 		String imports = input;
 		if(input.startsWith("Team Name: "))
 		{
@@ -32,6 +34,14 @@ public class Team {
 		}
 	}
 	
+	public static Team getEnemyTeam(int id)
+	{	//Gets the enemy of team "id".
+		if(id == 0)
+			return players[1];
+		else return players[0];
+	}
+	
+	public static Team[] players = new Team[2];
 	public Pokemon[] team = new Pokemon[6];
 	public int teamID = -1;
 	public String teamName;
@@ -67,7 +77,10 @@ public class Team {
 				break;
 			}
 			if(team[i].name.equals(p.name))
+			{
+				p = team[i];
 				break;
+			}
 		}
 		hasInitialized = true;
 		return p;

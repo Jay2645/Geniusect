@@ -40,4 +40,20 @@ public enum Stat {
 		}
 		return stat;
 	}
+	
+	public static Stat fromString(String s)
+	{
+		s = s.toLowerCase();
+		if(s.startsWith("hp"))
+			return Stat.HP;
+		if(s.startsWith("attack"))
+			return Stat.Atk;
+		if(s.startsWith("special attack"))
+			return Stat.SpA;
+		if(s.startsWith("defense"))
+			return Stat.Def;
+		if(s.startsWith("special defense"))
+			return Stat.SpD;
+		return Stat.Spe;
+	}
 }
