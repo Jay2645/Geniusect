@@ -134,11 +134,11 @@ public class GeniusectAI {
 	protected static int lossCount = 0;
 	
 	public static void main(String[] args) {
-		//WebDriver driver = new FirefoxDriver();
+		WebDriver driver = new FirefoxDriver();
     	// wait up to 10 seconds for elements to load
-    	//driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
+    	driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
         
-        //showdown = new ShowdownHelper(driver);
+        showdown = new ShowdownHelper(driver);
 		if(showdown == null)
 		{
 			battle = new Battle();
