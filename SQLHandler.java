@@ -48,13 +48,15 @@ public class SQLHandler {
 				int count = 0;
 				while (rs.next ())
 				{
-					m.type = Type.fromSQL(Integer.parseInt(rs.getString("type")));
+					m.type = Type.fromSQL(rs.getString("type"));
 					m.power = Integer.parseInt(rs.getString("power"));
 					String moveCategory = rs.getString("category");
 					if(moveCategory.toLowerCase().startsWith("special"))
-						m.special = true;
+						m.setType(MoveType.Special);
 					else if(moveCategory.toLowerCase().startsWith("status"))
-						m.status = true;
+						m.setType(MoveType.Status);
+					else
+						m.setType(MoveType.Physical);
 					m.accuracy = Integer.parseInt(rs.getString("accuracy"));
 					m.pp = Integer.parseInt(rs.getString("pp"));
 					m.target = Target.fromString(rs.getString("target"));
@@ -67,8 +69,7 @@ public class SQLHandler {
 						"Name: " + move +
 						", Type: " + m.type +
 						", Power: " + m.power +
-						", Special: " + m.special +
-						", Status: " + m.status +
+						", Move Type: "+m.getType() +
 						", Accuracy: " + m.accuracy +
 						", Target: " + m.target +
 						", PP: " + m.pp);
@@ -90,14 +91,16 @@ public class SQLHandler {
 	
 	public static double queryDamage(Type attack, Type defender)
 	{
+		if(attack == null || defender == null || attack == Type.None || defender == Type.None)
+			return 1;
 		double multiplier = 1;
 		openConnection();
 		//System.out.println("Sending SQL query to determine type effectiveness where the attacker is: " + attack.toString() +" and the defender is "+defender.toString());
 		try
 		{
 			PreparedStatement s = conn.prepareStatement("SELECT dmg_mult, typeatk, typedef FROM type_effect WHERE typeatk= ? AND typedef= ? ORDER BY dmg_mult ASC");
-			s.setString(1, attack.toSQLID()+"");
-			s.setString(2, defender.toSQLID()+"");
+			s.setString(1, attack.toString());
+			s.setString(2, defender.toString());
 			s.executeQuery();
 			ResultSet rs = s.getResultSet ();
 			//int count = 0;
@@ -120,6 +123,7 @@ public class SQLHandler {
 		{
 			System.err.println("Number Format Exception error: " + nfe.getMessage());
 		}
+		//System.out.println("Result: "+multiplier);
 		closeConnection();
 		return multiplier;
 	}
@@ -127,17 +131,16 @@ public class SQLHandler {
 	public static Pokemon queryPokemon(Pokemon p)
 	{
 		openConnection();
-		String currentPokemon = p.name;
+		String currentPokemon = p.getName();
 		System.out.println("Sending SQL query for Pokemon: " + currentPokemon);
 		try
 		{
-			PreparedStatement s = conn.prepareStatement("SELECT pokemon.name, atk, spa, def, spd, hp, spe, pokemon.type0, pokemon.type1, tier FROM pokemon JOIN learnset ON (pokemon.id=learnset.pokemon) JOIN move ON (learnset.move=move.id) WHERE pokemon.name = ? ORDER BY name ASC");
+			PreparedStatement s = conn.prepareStatement("SELECT pokemon.name, atk, spa, def, spd, hp, spe, pokemon.type0, pokemon.type1, tier FROM pokemon WHERE pokemon.name = ? ORDER BY name ASC");
 			s.setString(1, currentPokemon); // set the first '?' in the query to the currentPokemon
 			s.executeQuery(); // everything else is the same from here on
 			ResultSet rs = s.getResultSet();
 			int count = 0;
-			int type1Holder = -1;
-			int type2Holder = -1;
+			String[] types = new String[2];
 			while (rs.next ())
 			{
 				if(!rs.getString("name").toLowerCase().startsWith(currentPokemon.toLowerCase()))
@@ -151,46 +154,36 @@ public class SQLHandler {
 				stats[5] = rs.getString("spe");
 				for(int i = 0; i < stats.length; i++)
 				{
-					if(p.base[i] != 0)
+					if(p.getBaseStat(Stat.fromInt(i)) != 0)
 						continue;
 					if(stats[i] == null || stats[i].isEmpty())
 					{
 						System.err.println("Could not determine "+currentPokemon+"'s "+Stat.fromInt(i).toString()+" stat!");
 						continue;
 					}
-					p.base[i] = Integer.parseInt(stats[i]);
+					p.setBaseStat(i, Integer.parseInt(stats[i]));
 				}
-				p.tier = rs.getString("tier");
-				String[] types = new String[2];
+				p.setTier(rs.getString("tier"));
 				types[0] = rs.getString("type0");
 				types[1] = rs.getString("type1");
-				if(types[0].isEmpty())
-					type1Holder = -1;
-				else
-					type1Holder = Integer.parseInt(types[0]);
-				if(types[1] == null || types[1].isEmpty())
-					type2Holder = -1;
-				else
-					type2Holder = Integer.parseInt(rs.getString("type1"));
 				++count;
 			}
-			p.types[0] = Type.fromSQL(type1Holder);
-			p.types[1] = Type.fromSQL(type2Holder);
-			if(p.types[0] == Type.None && p.base[Stat.HP.toInt()] == 0)
+			p.setType(Type.fromSQL(types[0]), Type.fromSQL(types[1]));
+			if(p.getType(0) == Type.None && p.getBaseStat(Stat.Def) == 0 && p.getBaseStat(Stat.SpD) == 0)
 			{
 				System.err.println(currentPokemon+" is not in the SQL table!");
 				Battle.criticalErrors = Battle.criticalErrors + "\n"+currentPokemon+" is not in the SQL table!";
 			}
 			System.out.println("Pokemon name: " + currentPokemon);
-			System.out.println("Pokemon type 1: " + p.types[0]);
-			System.out.println("Pokemon type 2: " + p.types[1]);
-			System.out.println("Tier: " + 					p.tier);
-			System.out.println("Base HP: " + 				p.base[Stat.HP.toInt()]);
-			System.out.println("Base Attack: " + 			p.base[Stat.Atk.toInt()]);
-			System.out.println("Base Defense: " + 			p.base[Stat.Def.toInt()]);
-			System.out.println("Base Special Attack: " + 	p.base[Stat.SpA.toInt()]);
-			System.out.println("Base Special Defense: " +	p.base[Stat.SpD.toInt()]);
-			System.out.println("Base Speed: " +		 		p.base[Stat.Spe.toInt()]);
+			System.out.println("Pokemon type 1: " + p.getType(0));
+			System.out.println("Pokemon type 2: " + p.getType(1));
+			System.out.println("Tier: " + 					p.getTier());
+			System.out.println("Base HP: " + 				p.getBaseStat(Stat.HP));
+			System.out.println("Base Attack: " + 			p.getBaseStat(Stat.Atk));
+			System.out.println("Base Defense: " + 			p.getBaseStat(Stat.Def));
+			System.out.println("Base Special Attack: " + 	p.getBaseStat(Stat.SpA));
+			System.out.println("Base Special Defense: " +	p.getBaseStat(Stat.SpD));
+			System.out.println("Base Speed: " +		 		p.getBaseStat(Stat.Spe));
 			rs.close ();
 			s.close ();
 			System.out.println (count + " rows were retrieved");

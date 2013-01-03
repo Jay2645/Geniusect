@@ -21,11 +21,11 @@ public class Move {
 	public Status condition = null; //A status condition to inflict upon a target.
 	public Map<VolatileStatus, Target> vol = new HashMap<VolatileStatus, Target>(); //The volatile status condition caused and its target.
 	public Map<Stat, String> boosts = new HashMap<Stat, String>(); //What stats are boosted. <Stat, int> throws error for some reason?
-	public boolean special;
-	public boolean status;
+	public MoveType moveType = MoveType.Status;
 	public int boostChance = 0;
 	public int recoilPercent = 0;
 	
+	public boolean isContact = false;
 	public boolean disabled = false;
 	
 	protected Map<Pokemon, Point> projectedDamage = new HashMap<Pokemon,Point>(6);
@@ -43,8 +43,8 @@ public class Move {
 		type = clone.type;
 		target = clone.target;
 		boosts = clone.boosts;
-		special = clone.special;
-		status = clone.status;
+		moveType = clone.getType();
+		isContact = clone.getContact();
 		boostChance = clone.boostChance;
 		recoilPercent = clone.recoilPercent;
 		disabled = clone.disabled;
@@ -60,7 +60,7 @@ public class Move {
 		else
 			name = n.substring(0, i);
 		user = p;
-		if(name.toLowerCase().startsWith("Struggle"))
+		if(name.toLowerCase().startsWith("struggle"))
 		{
 			pp = Integer.MAX_VALUE;
 			power = 50;
@@ -75,15 +75,15 @@ public class Move {
 	public void onMoveUsed(Pokemon enemy, int damageDone, boolean wasCrit)
 	{
 		//Called when this move is used.
-		if(user.item != null && user.item.name.toLowerCase().startsWith("choice"))
-			user.lockedInto = this;
-		if(enemy.ability == null)
+		if(user.getItem() != null && user.getItem().name.toLowerCase().startsWith("choice"))
+			user.setLockedInto(this);
+		if(enemy.getAbility() == null)
 		{
 			pp--;
 		}
 		else
 		{
-			if(enemy.ability.name.toLowerCase().startsWith("pressure"))
+			if(enemy.getAbility().getName().toLowerCase().startsWith("pressure"))
 				pp -=2;
 			else
 				pp--;
@@ -91,11 +91,6 @@ public class Move {
 		if(0 >= pp)
 		{
 			disabled = true;
-			for(int i = 0; i < user.moveset.length; i++)
-			{
-				if(user.moveset[i].name.equals(name)) //Make SURE it can't use it.
-					user.moveset[i] = null;
-			}
 		}
 		if(!projectedPercent.containsKey(enemy));
 		{
@@ -109,7 +104,7 @@ public class Move {
 	
 	public boolean withinExpectedRange(int damage, Pokemon p, boolean wasCrit)
 	{
-		if(wasCrit && user.ability.name.toLowerCase().startsWith("sniper"))
+		if(wasCrit && user.getAbility().getName().toLowerCase().startsWith("sniper"))
 		{
 			damage /= 3;
 		}
@@ -204,10 +199,29 @@ public class Move {
 		else return getProjectedDamage(enemy).x;
 	}
 	
+	public boolean getContact()
+	{
+		return isContact;
+	}
+	
 	public void boostStats(Stat boost)
 	{
 		if(boosts.get(boost).equals("0"))
 			return;
 		user.giveBoosts(boost, Integer.parseInt(boosts.get(boost)));
+	}
+	
+	public MoveType getType()
+	{
+		return moveType;
+	}
+	
+	/**
+	 * Sets this move's MoveType to the specified MoveType.
+	 * @param type (MoveType): The new MoveType.
+	 */
+	public void setType(MoveType type)
+	{
+		moveType = type;
 	}
 }

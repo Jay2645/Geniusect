@@ -10,15 +10,18 @@ public class Pokequations {
 	
 	public static Point calculateDamagePercent(Pokemon attacker, Move move, Pokemon defender)
 	{
-		if(move.status)
+		if(move.getType() == MoveType.Status)
 			return new Point(0,0);
 		Point percentage = calculateDamage(attacker, move, defender);
-		if(defender.fullHP == 0)
+		if(defender.getFullHP() == 0)
 			defender.query();
-		if(defender.fullHP == 0) //There's something wrong with the SQL data.
+		if(defender.getFullHP() == 0) //There's something wrong with the SQL data.
 			return new Point(1,1);
-		percentage.x = percentage.x / (defender.fullHP / 100);
-		percentage.y = percentage.y / (defender.fullHP / 100);
+		double fullHP = (double)defender.getFullHP();
+		double percentageX = (percentage.x / fullHP) * 100;
+		double percentageY = (percentage.y / fullHP) * 100;
+		percentage.x = (int)Math.round(percentageX);
+		percentage.y = (int)Math.round(percentageY);
 		return percentage;
 	}
 	public static Point calculateDamage(Spread attacker, Move move, Spread defender)
@@ -31,16 +34,22 @@ public class Pokequations {
 	{
 		//System.out.println("Calculating the damage if "+attacker.name+" uses "+move.name+" on "+defender.name);
 		//Returns damage dealt as a point(minValue, maxValue).
-		if(move.status)
+		if(move.getType() == MoveType.Status)
 			return new Point(0,0);
-		boolean stab = false;
-		if(attacker.types[0] == move.type || attacker.types[1] == move.type)
-			stab = true;
+		Type[] immunities = defender.getImmunities();
+		for(int i = 0; i < immunities.length; i++)
+		{
+			if(immunities[i] == move.type)
+				return new Point(0,0);
+		}
+		double stab = 1;
+		if(attacker.getType(0) == move.type || attacker.getType(1) == move.type)
+			stab = attacker.getSTAB();
 		int attackPower = move.power;
 		int attackStat;
 		int defenseStat;
-		int level = attacker.level;
-		if(move.special)
+		int level = attacker.getLevel();
+		if(move.getType() == MoveType.Special)
 		{
 			attackStat = attacker.boostedStat(Stat.SpA);
 			defenseStat = defender.boostedStat(Stat.SpD);
@@ -52,22 +61,20 @@ public class Pokequations {
 		}
 		if(defender.boostedStat(Stat.Def) == 0)
 			defenseStat = 100; //Means we could not look up this Pokemon's defense stat for some reason.
-		double multiplier = damageMultiplier(move.type, defender.types);
+		//TODO: Convert Hidden Power to correct type.
+		double multiplier = damageMultiplier(move.type, defender.getTypes());
 		
-		return calculateDamage(level, attackStat, attackPower, defenseStat, stab, multiplier);
+		return calculateDamage(level, attackStat, attackPower, defenseStat, stab, multiplier,attacker.getAbilityModifier());
 	}
 	
-	private static Point calculateDamage(int level, int attackStat, int attackPower, int defenseStat, boolean stab, double multiplier)
+	private static Point calculateDamage(int level, int attackStat, int attackPower, int defenseStat, double stab, double multiplier, double modifier)
 	{
 		if(defenseStat == 0)
 			return new Point(1,1);
 		//Returns damage dealt as a point(minValue, maxValue).
-		double bonus = 1;
-		if(stab)
-			bonus = 1.5;
 		
 		Point p = new Point();
-		p.y = (int)Math.floor(((((2 * level / 5 + 2) * attackStat * attackPower / defenseStat) / 50) + 2) * bonus * multiplier);
+		p.y = (int)Math.floor(((((2 * level / 5 + 2) * attackStat * (attackPower * modifier) / defenseStat) / 50) + 2) * stab * multiplier);
 		p.x = (int)Math.ceil(p.y * 0.85);
 		//System.out.println("Max damage is "+p.y);
 		return p;
@@ -78,16 +85,16 @@ public class Pokequations {
 	public static int calculateAtkStat(Pokemon attacker, Move move, Pokemon defender, int percentageLost)
 	{
 		int attackPower = move.power;
-		int level = attacker.level;
+		int level = attacker.getLevel();
 		int defenseStat;
-		if(move.special)
+		if(move.getType() == MoveType.Special)
 			defenseStat = defender.boostedStat(Stat.SpD);
 		else
 			defenseStat = defender.boostedStat(Stat.Def);
-		double multiplier = damageMultiplier(move.type, defender.types);
+		double multiplier = damageMultiplier(move.type, defender.getTypes());
 		double bonus = 1;
-		if(attacker.types[0] == move.type || attacker.types[1] == move.type)
-			bonus = 1.5;
+		if(attacker.getType(0) == move.type || attacker.getType(1) == move.type)
+			bonus = attacker.getSTAB();
 		int damage = calculateHPDamage(percentageLost,defender.boostedStat(Stat.HP));
 		
 		return (int)Math.floor(50 * damage * defenseStat / (bonus * multiplier * attackPower * (2 * level / 5 + 2)) - 100 * defenseStat / (attackPower * (2 * level / 5 + 2)));
@@ -121,7 +128,7 @@ public class Pokequations {
 	
 	public static double damageMultiplier(Type move, Type[] enemy)
 	{
-		if(move == Type.None)
+		if(move == Type.None || move == null)
 			return 1;
 		//Returns the damage multiplier value for a type matchup.
 		double first = SQLHandler.queryDamage(move, enemy[0]);
@@ -143,9 +150,9 @@ public class Pokequations {
 	
 	public static int calculateStat(Stat type, Pokemon pokemon)
 	{
-		if(pokemon.base == null || pokemon.base[type.toInt()] == 0)
+		if(pokemon.getBaseStat(type) == 0)
 			return 0;
-		return calculateStat(type, pokemon.nature, pokemon.base[type.toInt()], pokemon.ivs[type.toInt()],pokemon.evs[type.toInt()], pokemon.level);
+		return calculateStat(type, pokemon.getNature(), pokemon.getBaseStat(type), pokemon.getIVs(type),pokemon.getEVs(type), pokemon.getLevel());
 	}
 	
 	public static int calculateStat(Stat type, Nature nature, int base, int iv, int ev, int level)
@@ -168,7 +175,7 @@ public class Pokequations {
 	
 	public static int calculateEVs(Stat stat, Pokemon pokemon)
 	{
-		return calculateEVs(pokemon.nature,stat,pokemon.base[stat.toInt()],pokemon.level,pokemon.stats[stat.toInt()],pokemon.ivs[stat.toInt()]);
+		return calculateEVs(pokemon.getNature(),stat,pokemon.getBaseStat(stat),pokemon.getLevel(),pokemon.getStats(stat),pokemon.getIVs(stat));
 	}
 	
 	public static int calculateEVs(Nature nature, Stat stat, int base, int level, int statValue, int iv)
@@ -220,63 +227,69 @@ public class Pokequations {
 	{
 		//Proper calculation for Wobbuffet, Wynaut, etc.
 		boolean foundMove = false;
-		for(int i = 0; i < attacker.moveset.length; i++)
+		Move[] moveset = attacker.getMoveset();
+		for(int i = 0; i < moveset.length; i++)
 		{
-			if(attacker.moveset[i] == null || attacker.moveset[i].disabled)
+			if(moveset[i] == null || moveset[i].disabled)
 				continue;
 			foundMove = true;
-			int turnsUntilDead = turnsToKill(attacker.hpPercent, enemyMove.getProjectedPercent(attacker).y + attacker.moveset[i].recoilPercent);
+			int projectedDamageFromEnemy = 0;
+			if(enemyMove.getProjectedPercent(attacker) == null)
+				projectedDamageFromEnemy = calculateDamagePercent(attacker,enemyMove,defender).y;
+			else
+				projectedDamageFromEnemy = enemyMove.getProjectedPercent(attacker).y;
+			int turnsUntilDead = turnsToKill(attacker.getHealth(), projectedDamageFromEnemy + moveset[i].recoilPercent);
 			if(turnsUntilDead > 1)
 			{
-				if(attacker.moveset[i].name.toLowerCase().startsWith("counter") && !enemyMove.special || attacker.moveset[i].name.toLowerCase().startsWith("mirror coat") && enemyMove.special)
+				if(moveset[i].name.toLowerCase().startsWith("counter") && enemyMove.getType() == MoveType.Physical || moveset[i].name.toLowerCase().startsWith("mirror coat") && enemyMove.getType() == MoveType.Special)
 				{
 					int projectedDamageLower = enemyMove.getProjectedDamage(attacker).x * 2;
 					int projectedDamageUpper = enemyMove.getProjectedDamage(attacker).y * 2;
-					attacker.moveset[i].getProjectedDamage(defender).x = projectedDamageLower;
-					attacker.moveset[i].getProjectedDamage(defender).y = projectedDamageUpper;
-					attacker.moveset[i].getProjectedPercent(defender).x = defender.hpToPercent(projectedDamageLower);
-					attacker.moveset[i].getProjectedPercent(defender).y = defender.hpToPercent(projectedDamageUpper);
+					moveset[i].getProjectedDamage(defender).x = projectedDamageLower;
+					moveset[i].getProjectedDamage(defender).y = projectedDamageUpper;
+					moveset[i].getProjectedPercent(defender).x = defender.hpToPercent(projectedDamageLower);
+					moveset[i].getProjectedPercent(defender).y = defender.hpToPercent(projectedDamageUpper);
 				}
-				else if(attacker.moveset[i].name.toLowerCase().startsWith("counter") && enemyMove.special || attacker.moveset[i].name.toLowerCase().startsWith("mirror coat") && !enemyMove.special)
+				else if(moveset[i].name.toLowerCase().startsWith("counter") && enemyMove.getType() != MoveType.Physical || moveset[i].name.toLowerCase().startsWith("mirror coat") && enemyMove.getType() != MoveType.Special)
 				{
-					attacker.moveset[i].getProjectedDamage(defender).x = 0;
-					attacker.moveset[i].getProjectedDamage(defender).y = 0;
-					attacker.moveset[i].getProjectedPercent(defender).x = 0;
-					attacker.moveset[i].getProjectedPercent(defender).y = 0;
+					moveset[i].getProjectedDamage(defender).x = 0;
+					moveset[i].getProjectedDamage(defender).y = 0;
+					moveset[i].getProjectedPercent(defender).x = 0;
+					moveset[i].getProjectedPercent(defender).y = 0;
 				}
 				if(turnsUntilDead == 2 && !attacker.isFasterThan(defender))
 				{
-					if(attacker.moveset[i].name.toLowerCase().startsWith("destiny bond"))
+					if(moveset[i].name.toLowerCase().startsWith("destiny bond"))
 					{
-						attacker.moveset[i].getProjectedDamage(defender).x = Integer.MAX_VALUE - 1;
-						attacker.moveset[i].getProjectedDamage(defender).y = Integer.MAX_VALUE;
-						attacker.moveset[i].getProjectedPercent(defender).x = 99;
-						attacker.moveset[i].getProjectedPercent(defender).y = 100;
+						moveset[i].getProjectedDamage(defender).x = Integer.MAX_VALUE - 1;
+						moveset[i].getProjectedDamage(defender).y = Integer.MAX_VALUE;
+						moveset[i].getProjectedPercent(defender).x = 99;
+						moveset[i].getProjectedPercent(defender).y = 100;
 					}
 				}
-				else if(attacker.moveset[i].name.toLowerCase().startsWith("destiny bond"))
+				else if(moveset[i].name.toLowerCase().startsWith("destiny bond"))
 				{
-					attacker.moveset[i].getProjectedDamage(defender).x = 0;
-					attacker.moveset[i].getProjectedDamage(defender).y = 0;
-					attacker.moveset[i].getProjectedPercent(defender).x = 0;
-					attacker.moveset[i].getProjectedPercent(defender).y = 0;
+					moveset[i].getProjectedDamage(defender).x = 0;
+					moveset[i].getProjectedDamage(defender).y = 0;
+					moveset[i].getProjectedPercent(defender).x = 0;
+					moveset[i].getProjectedPercent(defender).y = 0;
 				}
 			}
 			else
 			{
-				if(attacker.moveset[i].name.toLowerCase().startsWith("counter")|| attacker.moveset[i].name.toLowerCase().startsWith("mirror coat"))
+				if(moveset[i].name.toLowerCase().startsWith("counter")|| moveset[i].name.toLowerCase().startsWith("mirror coat"))
 				{
-					attacker.moveset[i].getProjectedDamage(defender).x = 0;
-					attacker.moveset[i].getProjectedDamage(defender).y = 0;
-					attacker.moveset[i].getProjectedPercent(defender).x = 0;
-					attacker.moveset[i].getProjectedPercent(defender).y = 0;
+					moveset[i].getProjectedDamage(defender).x = 0;
+					moveset[i].getProjectedDamage(defender).y = 0;
+					moveset[i].getProjectedPercent(defender).x = 0;
+					moveset[i].getProjectedPercent(defender).y = 0;
 				}
-				else if(turnsUntilDead == 1 && attacker.isFasterThan(defender) && attacker.moveset[i].name.toLowerCase().startsWith("destiny bond"))
+				else if(turnsUntilDead == 1 && attacker.isFasterThan(defender) && moveset[i].name.toLowerCase().startsWith("destiny bond"))
 				{
-					attacker.moveset[i].getProjectedDamage(defender).x = Integer.MAX_VALUE - 1;
-					attacker.moveset[i].getProjectedDamage(defender).y = Integer.MAX_VALUE;
-					attacker.moveset[i].getProjectedPercent(defender).x = 99;
-					attacker.moveset[i].getProjectedPercent(defender).y = 100;
+					moveset[i].getProjectedDamage(defender).x = Integer.MAX_VALUE - 1;
+					moveset[i].getProjectedDamage(defender).y = Integer.MAX_VALUE;
+					moveset[i].getProjectedPercent(defender).x = 99;
+					moveset[i].getProjectedPercent(defender).y = 100;
 				}
 			}
 		}
@@ -287,20 +300,20 @@ public class Pokequations {
 	
 	public static Move bestMove(Pokemon attacker, Pokemon defender)
 	{
-		return bestMove(attacker, defender, attacker.moveset);
+		return bestMove(attacker, defender, attacker.getMoveset());
 	}
 	
 	public static Move bestMove(Pokemon attacker, Pokemon defender, Move[] moveset)
 	{
-		if(attacker.lockedInto != null)
-			return attacker.lockedInto;
+		if(attacker.getLockedInto() != null)
+			return attacker.getLockedInto();
 		Point damage = new Point(Integer.MIN_VALUE, Integer.MIN_VALUE + 1);
 		Move use = null;
 		for(int i = 0; i < moveset.length; i++)
 		{
 			if(moveset[i] == null || moveset[i].disabled || moveset[i].pp <= 0)
 			{
-				System.err.println(attacker.name+"'s move "+moveset[i]+" is null or disabled!");
+				System.err.println(attacker.getName()+"'s move "+moveset[i]+" is null or disabled!");
 				continue;
 			}
 			if(use == null)
@@ -333,78 +346,5 @@ public class Pokequations {
 		if(damage == 0)
 			return Integer.MAX_VALUE;
 		return (int)Math.floor(health / damage);
-	}
-	
-	public static void printParentRecursive(AINode node)
-	{
-		if(node.parent != null)
-		{
-			System.err.println(node.ourActive.name+": "+node.decision.name);
-			printParentRecursive(node.parent);
-		}
-	}
-	
-	public static Action miniMax(AINode node, int depth)
-	{
-		if(node.isRoot)
-		{
-			if(node.result == null)
-			{
-				return checkChildren(node, depth);
-			}
-			else return node.result.decision;
-		}
-		//Calculates all worst-case scenarios, then returns steps to minimize losses.
-		if(depth <= 0 || node.children == null)
-		{
-			System.err.println(node.decision.name+"'s children "+node.children+" == null OR 0 == "+ depth+". Parent: "+node.parent.decision);
-			printParentRecursive(node);
-			return node.decision;
-		}
-		return checkChildren(node, depth);
-	}
-	
-	private static Action checkChildren(AINode node, int depth)
-	{
-		/*int alpha = -node.player * Integer.MAX_VALUE;
-		for(int i = 0; i < node.children.length; i++)
-		{
-			int miniResult = miniMax(node.children[i], depth - 1);
-			if(node.player == 1)
-			{
-				if(alpha >= miniResult)
-				{
-					alpha = miniResult;
-					node.result = node.children[i];
-					System.out.println("Current result for player 1 is "+alpha);
-				}
-				//System.out.println("Alpha is "+alpha+", miniResult (larger than alpha) is "+miniResult+", depth is "+depth);
-			}
-			else
-			{
-				if(alpha <= miniResult)
-				{
-					alpha = miniResult;
-					node.result = node.children[i];
-					System.out.println("Current result for player -1 is "+alpha);
-				}
-				//System.out.println("Alpha is "+alpha+", miniResult (smaller than alpha) is "+miniResult+", depth is "+depth);
-			}
-		}*/
-		int alpha = Integer.MIN_VALUE;
-		Action decision = null;
-		for(int i = 0; i < node.children.length; i++)
-		{
-			Action miniResult = miniMax(node.children[i], depth - 1);
-			int miniScore = -miniResult.score;
-			if(miniScore > alpha)
-			{
-				System.out.println(node.children[i].decision.name+" has a score of "+miniResult+", to be achieved in "+node.count+" turns.");
-				decision = miniResult;
-				node.result = node.children[i];
-				alpha = miniScore;
-			}
-		}
-		return decision;
 	}
 }

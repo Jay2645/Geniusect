@@ -5,7 +5,11 @@
 
 package geniusect;
 
+import geniusect.ai.GeniusectAI;
+
 import java.awt.Point;
+
+import seleniumhelper.ShowdownHelper;
 
 public class Attack extends Action {
 	public Move move;
@@ -13,24 +17,31 @@ public class Attack extends Action {
 	public Pokemon attacker;
 	public Pokemon defender;
 	
-	public Attack(Move m, Pokemon attack, Pokemon defend)
+	public Attack(Move m, Pokemon attack, Pokemon defend, Battle b)
 	{
-		name = m.name;
 		attacker = attack;
 		defender = defend;
+		battle = b;
+		if(attacker.getLockedInto() != null)
+		{
+			move = attacker.getLockedInto();
+			name = move.name;
+			return;
+		}
 		if(m.disabled || m.name.toLowerCase().startsWith("struggle"))
 		{
 			//Double-check to make sure this is a legal move.
 			Move[] newSet = new Move[4];
+			Move[] currentSet = attack.getMoveset();
 			boolean foundEnabledMove = false;
-			for(int i = 0; i < attack.moveset.length; i++)
+			for(int i = 0; i < currentSet.length; i++)
 			{
-				if(attack.moveset[i] == null || attack.moveset[i].disabled)
+				if(currentSet[i] == null || currentSet[i].disabled)
 					continue;
 				else
 				{
 					foundEnabledMove = true;
-					newSet[i] = attack.moveset[i];
+					newSet[i] = currentSet[i];
 				}
 			}
 			if(foundEnabledMove)
@@ -42,6 +53,7 @@ public class Attack extends Action {
 		}
 		else
 			move = m;
+		name = move.name;
 	}
 	
 	public int deploy()
@@ -49,14 +61,15 @@ public class Attack extends Action {
 		//Send next Attack to Showdown.
 		if(sent)
 			return defender.getDamageDone();
-		System.err.println(attacker.name+" used "+move.name+"!");
+		ShowdownHelper showdown = battle.getShowdown();
+		System.err.println(attacker.getName()+" used "+move.name+"!");
 		sent = true;
 		if(!sayOnSend.equals(""))
 		{
 			GeniusectAI.print(sayOnSend);
 			sayOnSend = "";
 		}
-		if(GeniusectAI.showdown == null || GeniusectAI.simulating)
+		if(showdown == null || GeniusectAI.isSimulating())
 		{
 			if(!attacker.isAlive()) //We can only attack if we're alive.
 				return 0;
@@ -65,17 +78,17 @@ public class Attack extends Action {
 				System.err.println("Damage done: "+damageDone+"%");
 			return damageDone;
 		}
-		else if(GeniusectAI.showdown != null)
+		else if(showdown != null)
 		{
 			try
 			{
-				GeniusectAI.showdown.doMove(move.name);
+				showdown.doMove(move.name);
 			}
 			catch (Exception e)
 			{
-				System.err.println(attacker.name+" could not do move "+move.name+"! Exception data:\n"+e);
-				GeniusectAI.print("Exception! "+attacker.name+" could not do move "+move.name+"!");
-				Action a = onException(this, e);
+				System.err.println(attacker.getName()+" could not do move "+move.name+"! Exception data:\n"+e);
+				GeniusectAI.print("Exception! "+attacker.getName()+" could not do move "+move.name+"!");
+				Action a = onException(this, e, battle);
 				if(a instanceof Attack)
 					((Attack) a).deploy();
 				else if(a instanceof Change)

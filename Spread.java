@@ -8,11 +8,15 @@
 
 package geniusect;
 
+import geniusect.abilities.Ability;
+import geniusect.ai.GeniusectAI;
+
+
 public class Spread extends Pokemon {
 	public Spread(Pokemon p, boolean recheck)
 	{
 		clone(p);
-		team.team[id] = this;
+		team.setPokemon(id, this);
 		int[] evAdjust = evs;
 		adjustEVsNoCheck(evAdjust);
 		improbable = recheck;
@@ -69,10 +73,9 @@ public class Spread extends Pokemon {
 	public void withdraw()
 	{
 		//Called when this Pokemon withdraws from the battle.
-		if(active[team.teamID] == this)
-			active[team.teamID] = null;
+		team.setActive(null);
 		boostedStats = stats;
-		if(team.teamID == 0)
+		if(team.getTeamID() == 0)
 		{
 			GeniusectAI.setMiniMax();
 		}
@@ -80,7 +83,7 @@ public class Spread extends Pokemon {
 	
 	public void wobbuffet(boolean entering)
 	{
-		if(team.teamID == 0 && name.toLowerCase().startsWith("wobbuffet") || name.toLowerCase().startsWith("wynaut"))
+		if(team.getTeamID() == 0 && name.toLowerCase().startsWith("wobbuffet") || name.toLowerCase().startsWith("wynaut"))
 		{
 			if(entering)
 				GeniusectAI.setGeneric();

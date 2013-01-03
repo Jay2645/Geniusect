@@ -5,26 +5,35 @@
 
 package geniusect;
 
+import geniusect.ai.GenericAI;
+import geniusect.ai.MinimaxNode;
+import geniusect.ai.GeniusectAI;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import seleniumhelper.ShowdownHelper;
+
 public class Action 
 {
-	public String name = "";
+	public String name;
 	protected String sayOnSend = "";
 	protected boolean crit = false;
 	protected boolean sent = false;
 	public int score = 0; //The minimax score for this action.
 	public int attempt = 0; //How many times we've attempted to try this.
+	protected Battle battle = null;
 	
 	public static int changeCount = 0; //How many times in a row have we changed? (Sanity check.)
 	
 	
-	public void updateLastTurn()
+	public void updateLastTurn(Battle b)
 	{
-		if(GeniusectAI.showdown != null)
+		battle = b;
+		ShowdownHelper showdown = battle.getShowdown();
+		if(showdown != null)
 		{
-			String lastTurn = GeniusectAI.showdown.getLastTurnText();
+			String lastTurn = showdown.getLastTurnText();
 			if(lastTurn.contains("~printLogic"))
 				GeniusectAI.lastTurnLogic();
 			boolean switched = findPokemon(lastTurn);
@@ -33,49 +42,54 @@ public class Action
 			if(switched && this instanceof Attack)
 			{
 				Attack a = (Attack)this;
-				a.defenderSwap(Pokemon.active[1]);
+				a.defenderSwap(battle.getTeam(1).getActive());
 			}
 		}
 	}
 	
-	
-	public void sendToShowdown(AINode node)
+	/**
+	 * Sets a child's enemy Pokemon or adds the damage done by this Action to the child.
+	 * @param node (MinimaxNode): The child node.
+	 */
+	public void sendToShowdown(MinimaxNode node)
 	{
 		if(this instanceof Change)
 		{
 			Change c = (Change)this;
-			changeCount++;
-			node.ourActive = c.switchTo;
+			node.setEnemyPokemon(c.switchTo);
 			c.deploy();
 		}
 		else if(this instanceof Attack)
 		{
 			changeCount = 0;
 			Attack a = (Attack) this;
-			a.defender = node.ourActive;
-			node.damageDoneToUs += a.deploy();
+			a.defender = node.getOurPokemon();
+			node.addDamageDoneUs(a.deploy());
 		}
 	}
 	
 	public void sendToShowdown(Battle b)
 	{
+		battle = b;
+		ShowdownHelper showdown = b.getShowdown();
 		if(this instanceof Change)
 		{
 			Change c = (Change)this;
+			changeCount++;
 			c.deploy();
 		}
 		else if(this instanceof Attack)
 		{
 			Attack a = (Attack) this;
-			a.defender.team.team[a.defender.id] = a.defender;
+			changeCount = 0;
 			a.deploy();
 		}
-		if(b.firstTurn)
+		if(b.isFirstTurn())
 			GeniusectAI.displayIntro();
-		b.firstTurn = false;
-		if(GeniusectAI.showdown != null)
+		b.isFirstTurn(false);
+		if(showdown != null)
 		{
-			if(GeniusectAI.showdown.waitForNextTurn(5))
+			if(showdown.waitForNextTurn(5))
 				b.newTurn();
 			else
 				b.gameOver(true);
@@ -105,7 +119,7 @@ public class Action
 		findMove(log);
 	}*/
 	
-	protected static void findMove(String text)
+	protected void findMove(String text)
 	{	//Takes a string of the last turn's events, finds all moves used and their damage, then updates HP and Pokemon.
 		Pattern p = Pattern.compile("(.+) used (.+)!", Pattern.MULTILINE);
 		Matcher m = p.matcher(text);
@@ -117,12 +131,12 @@ public class Action
 			String tempname = text.substring(m.start(1), m.end(1));
 			if(tempname.contains("The foe's"))
 			{
-				t = Team.players[1];
+				t = battle.getTeam(1);
 				tempname = stripFoe(tempname);
 			}
 			else
-				t = Team.players[0];
-			Pokemon poke = t.addPokemon(tempname);
+				t = battle.getTeam(0);
+			Pokemon poke = t.addPokemon(tempname, battle.getShowdown());
 			String tempmove = text.substring(m.start(2), m.end(2));
 			String moveDamage = text.substring(m.end(2));
 			boolean crit = false;
@@ -140,13 +154,13 @@ public class Action
 				}
 			}
 			System.out.println(tempname+" used "+tempmove+" for "+dmg+"% damage. Was it a crit? "+crit);
-			System.err.println(tempname+"'s enemy is "+poke.enemy);
+			System.err.println(tempname+"'s enemy is "+poke.getEnemy());
 			poke.onNewTurn(tempmove, dmg, crit);
 		}
 		findDrops(text);
 	}
 	
-	protected static void findDrops(String text)
+	protected void findDrops(String text)
 	{
 		Pattern whP = Pattern.compile("(.+) restored its status using White Herb!");
 		Matcher whM = whP.matcher(text);
@@ -171,16 +185,16 @@ public class Action
 			String herb;
 			if(temp.contains("The foe's"))
 			{
-				t = Team.players[1];
+				t = battle.getTeam(1);
 				temp = stripFoe(temp);
 				herb = restore[1];
 			}
 			else
 			{
-				t = Team.players[0];
+				t = battle.getTeam(0);
 				herb = restore[0];
 			}
-			Pokemon poke = t.addPokemon(temp);
+			Pokemon poke = t.addPokemon(temp, battle.getShowdown());
 			String stat = text.substring(m.start(2),m.end(2));
 			int level = 1;
 			if(stat.contains("harshly")||stat.contains("sharply"))
@@ -211,7 +225,7 @@ public class Action
 					level *= -1;
 				else
 				{
-					System.out.println(poke.name+" restored its negative stat drop!");
+					System.out.println(poke.getName()+" restored its negative stat drop!");
 					level = 0;
 				}
 			}
@@ -237,13 +251,13 @@ public class Action
 		return f;
 	}
 	
-	protected static boolean findPokemon(String text)
+	protected boolean findPokemon(String text)
 	{	//Takes a string of the last turn's events, finds any Pokemon that were sent out, and marks them as active.
 		boolean switched = false;
 		String[] owner = new String[2];
 		String[] pokemon = new String[2];
-		owner[0] = Team.players[0].userName;
-		owner[1] = Team.players[1].userName;
+		owner[0] = battle.getTeam(0).getUsername();
+		owner[1] = battle.getTeam(1).getUsername();
 		Pattern faintP = Pattern.compile("(.+) fainted!", Pattern.MULTILINE);
 		Matcher faintM = faintP.matcher(text);
 		while(faintM.find())
@@ -253,11 +267,11 @@ public class Action
 			if(faint.contains("The foe's "))
 			{
 				faint = stripFoe(faint);
-				t = Team.players[1];
+				t = battle.getTeam(1);
 			}
 			else
-				t = Team.players[0];
-			Pokemon poke = t.addPokemon(faint);
+				t = battle.getTeam(0);
+			Pokemon poke = t.addPokemon(faint, battle.getShowdown());
 			poke.onDie();
 		}
 		Pattern p = Pattern.compile(" sent out (.+)!", Pattern.MULTILINE);
@@ -290,7 +304,7 @@ public class Action
 			}
 			if(pokemon[i] != null)
 			{
-				Pokemon poke = Team.players[i].addPokemon(pokemon[i]);
+				Pokemon poke = battle.getTeam(i).addPokemon(pokemon[i], battle.getShowdown());
 				poke.onSendOut();
 				switched = true;
 			}
@@ -298,7 +312,7 @@ public class Action
 		return switched;
 	}
 	
-	protected static Action onException(Action failure, Exception e)
+	protected static Action onException(Action failure, Exception e, Battle battle)
 	{
 		//Called if everything breaks.
 		if(failure.attempt == 0)
@@ -314,22 +328,22 @@ public class Action
 			GeniusectAI.print("Failed!");
 			GeniusectAI.print("Sorry! Geniusect is still in early development and is very buggy.");
 			GeniusectAI.print("If I don't leave, please hit the 'Kick inactive player button.'");
-			GeniusectAI.showdown.leaveBattle();
-			GeniusectAI.battle.playing = false;
-			GeniusectAI.battle = null;
+			battle.getShowdown().leaveBattle();
+			battle.isPlaying(false);
+			GeniusectAI.setBattle(null);
 			return null;
 		}
 		GeniusectAI.print("Attempting to rectify: attempt number "+failure.attempt+" / 4");
 		Action a;
-		if(Pokemon.active[0].isAlive())
+		if(battle.getTeam(0).getActive().isAlive())
 		{
-			GeniusectAI.showdown.getMoves();
-			a = GeniusectAI.bestMove();
+			battle.getShowdown().getMoves();
+			a = GenericAI.bestMove(battle);
 		}
 		else
 		{
-			Pokemon p = Change.bestCounter(Team.players[0].team,Pokemon.active[1]);
-			a = new Change(p);
+			Pokemon p = Change.bestCounter(battle.getTeam(0).getPokemon(),battle.getTeam(1).getActive());
+			a = new Change(p, battle);
 		}
 		a.attempt = failure.attempt + 1;
 		return a;

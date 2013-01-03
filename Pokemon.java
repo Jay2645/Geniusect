@@ -8,39 +8,46 @@
 
 package geniusect;
 
+
+import geniusect.abilities.Ability;
+import geniusect.ai.GeniusectAI;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import seleniumhelper.ShowdownHelper;
+
 public class Pokemon {
-	public static Pokemon[] active = new Pokemon[2]; //Will need to adjust for double battles.
-	public String name;
-	public int id = -1;
-	public Item item;
-	public Team team;
-	public int level = 100;
-	public Type[] types = {Type.None, Type.None};
-	public Ability ability;
-	public Nature nature = Nature.Hardy;
-	public String tier;
+	protected String name;
+	protected String nickName;
+	protected int id = -1;
+	protected Item item;
+	protected Team team;
+	protected int level = 100;
+	protected Type[] types = {Type.None, Type.None};
+	protected Ability ability;
+	protected Nature nature = Nature.Hardy;
+	protected String tier;
 	
-	public ArrayList<Type> immunities = new ArrayList<Type>();
+	protected ArrayList<Type> immunities = new ArrayList<Type>();
 	
-	public Move[] moveset = {null,null,null,null};
+	protected Move[] moveset = new Move[4];
 	
-	public int[] base = {0,0,0,0,0,0};
-	public int[] ivs = {31,31,31,31,31,31};
-	public int[] evs = {0,0,0,0,0,0};
-	public int[] stats = new int[6]; //Stats before boosts.
+	protected int[] base = {0,0,0,0,0,0};
+	protected int[] ivs = {31,31,31,31,31,31};
+	protected int[] evs = {0,0,0,0,0,0};
+	protected int[] stats = new int[6]; //Stats before boosts.
 	protected int[] boosts = {0,0,0,0,0,0};
 	protected int[] boostedStats = new int[6]; // Stats after boosts.
-	public int fullHP; //How big of an HP stat we have at full HP.
-	public int hpPercent = 100; //Our current HP percent.
-	public int evsLeft = 510; //Legality check for our EV calculations.
+	protected int fullHP; //How big of an HP stat we have at full HP.
+	protected int hpPercent = 100; //Our current HP percent.
+	protected int evsLeft = 510; //Legality check for our EV calculations.
 	
-	public boolean lead = false; //Is this the lead?
+	protected boolean lead = false; //Is this the lead?
 	protected boolean alive = true; //Is this Pokemon alive?
+	protected boolean active = false; //Is this Pokemon active?
 	protected boolean canMove = true; //Can we move?
 	protected boolean canSwitch = true; //Can we switch?
 	protected boolean charged = false; //Is our move recharged?
@@ -51,6 +58,8 @@ public class Pokemon {
 	protected Team enemyTeam;
 	protected int damageDoneLastTurn;
 	
+	protected ShowdownHelper showdown;
+	
 	public Pokemon() {}
 	
 	public Pokemon(Pokemon p)
@@ -58,12 +67,11 @@ public class Pokemon {
 		clone(p);
 	}
 	
-	public Pokemon(String n, Team t, int i)
+	public Pokemon(String n, String nick, Team t)
 	{
 		name = n;
 		team = t;
-		enemyTeam = Team.getEnemyTeam(team.teamID);
-		id = i;
+		enemyTeam = Team.getEnemyTeam(team.getTeamID());
 		query();
 	}
 	
@@ -73,8 +81,13 @@ public class Pokemon {
 		stats = Pokequations.calculateStat(this);
 		boostedStats = stats;
 		fullHP = boostedStats[Stat.HP.toInt()];
-		if(team == null && enemy == null)
-			team = Team.players[1];
+		if(team == null && enemy == null && showdown != null)
+		{
+			if(nickName == null || nickName.isEmpty())
+				showdown.getTeam(name);
+			else
+				showdown.getTeam(nickName); //TODO: Make sure this isn't an identical match.
+		}
 		else if(team == null)
 			team = enemy.enemyTeam;
 		onSendOut();
@@ -83,34 +96,16 @@ public class Pokemon {
 	public void onSendOut()
 	{
 		//Called when this Pokemon enters the battle.
-		if(team.hasInitialized)
-		{
-			if(active[team.teamID] == null)
-				active[team.teamID] = this;
-			else if(active[team.teamID] != null && active[team.teamID] != this)
-			{
-				active[team.teamID].onWithdraw();
-				active[team.teamID] = this;
-			}
-			if(team.teamID == 0)
-				enemy = active[1];
-			else
-				enemy = active[0];
-		}
-		else
-		{
-			if(active[team.teamID] == null)
-			{
-				//Make sure our enemy is defined.
-				if(team.teamID == 0)
-					enemy = active[1];
-				else
-					enemy = active[0];
-				active[team.teamID] = this;
-			}
-		}
+		active = true;
+		enemyTeam = Team.getEnemyTeam(team.getTeamID());
+		if(enemyTeam != null)
+			enemy = enemyTeam.getActive();
 		if(enemy != null)
-			enemy.enemy = this;
+			enemy.changeEnemy(this);
+		team.setActive(this);
+		showdown = team.getShowdown();
+		if(ability != null)
+			ability.onSendOut();
 		getMoves();
 		wobbuffet(true);
 		status.resetActive();
@@ -119,8 +114,8 @@ public class Pokemon {
 	public void onWithdraw()
 	{
 		//Called when this Pokemon withdraws from the battle.
-		if(active[team.teamID] == this)
-			active[team.teamID] = null;
+		active = false;
+		team.setActive(null);
 		resetBoosts();
 		effects.clear();
 		lockedInto = null;
@@ -131,11 +126,12 @@ public class Pokemon {
 	{
 		//Called when the Pokemon dies.
 		hpPercent = 0;
-		if(!GeniusectAI.simulating)
-			team.team[id] = this;
+		if(ability != null)
+			ability.onFaint();
 		System.err.println(name+" has died!");
-		onWithdraw();
 		alive = false;
+		if(!active)
+			onWithdraw();
 		Change change = GeniusectAI.onPokemonDeath(this);
 		if(change == null)
 			return null;
@@ -144,12 +140,13 @@ public class Pokemon {
 	
 	public void getMoves()
 	{
-		if(team.teamID == 0 && GeniusectAI.showdown != null)
+		showdown = team.getShowdown();
+		if(team.getTeamID() == 0 && showdown != null)
 		{
-			List<String> moves = GeniusectAI.showdown.getMoves();
+			List<String> moves = showdown.getMoves();
 			for(int i = 0; i < moves.size(); i++)
 			{
-				moveset[i] = new Move(moves.get(i), this);
+				addMove(moves.get(i));
 			}
 		}
 	}
@@ -159,8 +156,6 @@ public class Pokemon {
 		//Called when predicting future events.
 		//Whereas the method below takes the moves that THIS Pokemon did, this method takes a move the OTHER Pokemon did.
 		//It returns the amount of damage done in this turn.
-		if(!GeniusectAI.simulating)
-			team.team[id] = this;
 		int preHP = hpPercent;
 		damage(a);
 		for(int i = 0; i < effects.size(); i++)
@@ -170,6 +165,8 @@ public class Pokemon {
 		damage((int)Math.round(status.onNewTurn()));
 		//System.err.println("PreHP: "+preHP+", HP percent: "+hpPercent);
 		damageDoneLastTurn = preHP - hpPercent;
+		System.out.println(name+" took "+damageDoneLastTurn+"% damage.");
+		a.attacker.onNewTurn(a.name, damageDoneLastTurn, false);
 		return damageDoneLastTurn;
 	}
 	
@@ -177,38 +174,11 @@ public class Pokemon {
 	{
 		//Called when this Pokemon uses a move.
 		//Keeps track of what moves THIS Pokemon has done (if unknown) and what damage they did to the enemy.
-		for(int i = 0; i < moveset.length; i++)
-		{
-			if(moveset[i] == null || moveset[i].name.toLowerCase().startsWith("struggle") && !n.toLowerCase().startsWith("struggle"))
-			{
-				moveset[i] = new Move(n,this);
-				if(n.toLowerCase().startsWith("hidden power"))
-				{
-					moveset[i] = new HiddenPower(moveset[i]); 
-					if(team.teamID == 0)
-					{
-						List<String> hpType = GeniusectAI.showdown.getMoves();//Will need to be changed later.
-						for(int r = 0; r < hpType.size(); r++)
-						{
-							if(hpType.get(r).toLowerCase().startsWith("hidden power"))
-							{
-								System.err.println(hpType.get(r));
-							}
-						}
-						//moveset[i].type
-					}
-				}
-				if(enemy == null)
-					enemy = active[enemyTeam.teamID]; //So we can properly simulate the right team.
-				moveset[i].onMoveUsed(enemy, damageDone, crit);
-				break;
-			}
-			else if(moveset[i].name.toLowerCase().startsWith(n))
-			{
-				moveset[i].onMoveUsed(enemy, damageDone, crit);
-				break;
-			}
-		}
+		if(enemy == null)
+			enemy = enemyTeam.getActive(); //So we can properly simulate the right team.
+		Move moveUsed = addMove(n);
+		if(moveUsed != null)
+			moveUsed.onMoveUsed(enemy, damageDone, crit);
 		status.onNewTurn();
 	}
 	
@@ -263,6 +233,11 @@ public class Pokemon {
 		return alive;
 	}
 	
+	public boolean teamExists()
+	{
+		return team == null;
+	}
+	
 	public boolean canMove()
 	{
 		return canMove;
@@ -304,6 +279,105 @@ public class Pokemon {
 		return hpPercent;
 	}
 	
+	/**
+	 * Adds the move to the moveset. If the moveset is full, returns null. If the move is already in the moveset, returns that move.
+	 * @param moveName (String): The name of the move we're trying to add.
+	 * @return The move to add.
+	 */
+	public Move addMove(String moveName)
+	{
+		Move move = null;
+		if(team == null)
+			team = Team.lookupPokemon(this);
+		else
+			showdown = team.getShowdown();
+		for(int i = 0; i < moveset.length; i++)
+		{
+			for(int n = 0; n < moveset.length; n++)
+			{
+				//First iterate through all moves to make sure we don't already have this move.
+				if(moveset[n] != null && moveset[n].name.toLowerCase().startsWith(moveName.toLowerCase()))
+				{
+					move = moveset[n];
+					return move;
+				}
+			}
+			if(moveset[i] == null || moveset[i].name.toLowerCase().startsWith("struggle") && !moveName.toLowerCase().startsWith("struggle"))
+			{
+				System.err.println("Adding "+moveName+" to "+name+"'s move list.");
+				moveset[i] = new Move(moveName,this);
+				if(moveName.toLowerCase().startsWith("hidden power"))
+				{
+					moveset[i] = new HiddenPower(moveset[i]); 
+					if(team != null && team.getTeamID() == 0 && showdown != null)
+					{
+						List<String> hpType = showdown.getMoves();//Will need to be changed later.
+						for(int r = 0; r < hpType.size(); r++)
+						{
+							if(hpType.get(r).toLowerCase().startsWith("hidden power"))
+							{
+								System.err.println(hpType.get(r));
+							}
+						}
+					}
+				}
+				move = moveset[i];
+			}
+		}
+		return move;
+	}
+	
+	/**
+	 * Returns this Pokemon's item.
+	 * @return This Pokemon's held item.
+	 */
+	public Item getItem()
+	{
+		return item;
+	}
+	
+	/**
+	 * Gets the type at the specified index.
+	 * @param id - The index of the type. Can be 0 or 1.
+	 * @return Type - the type at that index.
+	 */
+	public Type getType(int id)
+	{
+		return types[id];
+	}
+	
+	/**
+	 * Returns our nature.
+	 * @return Nature - our Nature.
+	 */
+	public Nature getNature()
+	{
+		return nature;
+	}
+	
+	/**
+	 * Returns our ability.
+	 * @return Ability - our Ability.
+	 */
+	public Ability getAbility()
+	{
+		return ability;
+	}
+	
+	public Type[] getImmunities()
+	{
+		if(immunities.isEmpty())
+			return new Type[0];
+		Type[] immune = new Type[1];
+		immune = (Type[]) immunities.toArray(immune);
+		return immune;
+	}
+	
+	public void addImmunity(Type immunity)
+	{
+		immunities.add(immunity);
+	}
+	
 	public int getDamageDone()
 	{
 		return damageDoneLastTurn;
@@ -323,6 +397,99 @@ public class Pokemon {
 		return false;
 	}
 	
+	/**
+	 * Sets a move as the move we are forced to use.
+	 * @param move (Move): The move we are forced to use.
+	 */
+	public void setLockedInto(Move move)
+	{
+		lockedInto = move;
+	}
+	
+	/**
+	 * Gets the move we are locked into, if any.
+	 * @return The move we are locked into.
+	 */
+	public Move getLockedInto() {
+		return lockedInto;
+	}
+	
+	/**
+	 * Returns the move in our moveset at index i. If we can't use that move, returns null.
+	 * @param i - The index of this Pokemon, as an int.
+	 * @return Move - the move in slot i.
+	 */
+	public Move getMove(int i)
+	{
+		if(moveset[i] == null || moveset[i].disabled || moveset[i].name.toLowerCase().startsWith("struggle"))
+			return null;
+		return moveset[i];
+	}
+	
+	/**
+	 * Sets this Pokemon's ShowdownHelper to the specified ShowdownHelper.
+	 * @param helper (ShowdownHelper): The helper to use.
+	 */
+	public void setHelper(ShowdownHelper helper)
+	{
+		showdown = helper;
+	}
+	
+	/**
+	 * Sets the team to the specified team.
+	 * @param t (Team): The Team to set our team to.
+	 */
+	public void setTeam(Team t)
+	{
+		team = t;
+	}
+	
+	/**
+	 * Returns all the moves in our moveset.
+	 * @return Move[] - The moves in our moveset.
+	 */
+	public Move[] getMoveset()
+	{
+		return moveset;
+	}
+	
+	/**
+	 * Returns all our EVs.
+	 * @return int[] - Our EVs.
+	 */
+	public int[] getEVs()
+	{
+		return evs;
+	}
+	
+	/**
+	 * Gets the enemy of this Pokemon.
+	 * @return Pokemon - The enemy of this Pokemon.
+	 */
+	public Pokemon getEnemy()
+	{
+		return enemy;
+	}
+	
+	/**
+	 * Gets the Team of this Pokemon.
+	 * @return Team - The team of this Pokemon.
+	 */
+	public Team getTeam()
+	{
+		return team;
+	}
+	
+	public String getName()
+	{
+		return name;
+	}
+	
+	public boolean nameIs(String s)
+	{
+		return name.toLowerCase().startsWith(s.toLowerCase());
+	}
+	
 	public void chargeMove()
 	{
 		inflictStatus(VolatileStatus.Charging);
@@ -332,7 +499,141 @@ public class Pokemon {
 	
 	public void setAbility(String a)
 	{
-		ability = new Ability(a);
+		ability = new Ability(a, this);
+	}
+	
+	public void setAbility(Ability a)
+	{
+		ability = a;
+	}
+	
+	public int getFullHP()
+	{
+		return fullHP;
+	}
+	
+	public double getSTAB()
+	{
+		if(ability == null)
+			return 1.5;
+		return ability.getSTAB();
+	}
+	
+	public double getAbilityModifier()
+	{
+		if(ability == null)
+			return 1;
+		return ability.getModifier();
+	}
+	
+	public Pokemon[] getPokemonTeam()
+	{
+		if(team == null)
+			query();
+		return team.getPokemon();
+	}
+	
+	/**
+	 * Takes a stat and returns the base stat for that stat.
+	 * @param stat (Stat): The Stat to get the base stat for.
+	 * @return (int): The base stat for that stat.
+	 */
+	public int getBaseStat(Stat stat) 
+	{
+		return base[stat.toInt()];
+	}
+
+	/**
+	 * Returns this Pokemon's level.
+	 * @return (int): This Pokemon's level.
+	 */
+	public int getLevel() 
+	{
+		return level;
+	}
+
+	/**
+	 * Takes a stat and returns the EV-adjusted stat for that stat.
+	 * @param stat (Stat): The stat to get the adjusted stat for.
+	 * @return (int): The EV-adjusted stat.
+	 */
+	public int getStats(Stat stat) 
+	{
+		return stats[stat.toInt()];
+	}
+
+	/**
+	 * Takes a stat and returns the IV for that stat.
+	 * @param stat (Stat): The stat to get the IV for.
+	 * @return (int): The IV for that stat.
+	 */
+	public int getIVs(Stat stat) 
+	{
+		return ivs[stat.toInt()];
+	}
+	
+	/**
+	 * Takes a stat and returns the EVs for that stat.
+	 * @param stat (Stat): The stat to get the EVs for.
+	 * @return (int): The EVs for that stat.
+	 */
+	public int getEVs(Stat stat) 
+	{
+		return evs[stat.toInt()];
+	}
+	
+	/**
+	 * Returns what types we are.
+	 * @return (Type[]): Our types.
+	 */
+	public Type[] getTypes() 
+	{
+		return types;
+	}
+	
+	/**
+	 * Sets this Pokemon's base stat.
+	 * @param index (int): The index of the stat to set (use Stat.toInt() if you are unsure of a Stat's index).
+	 * @param baseStat (int): The base stat to set it to.
+	 * @see geniusect.Stat#toInt()
+	 */
+	public void setBaseStat(int index, int baseStat) {
+		base[index] = baseStat;
+	}
+
+	/**
+	 * Sets this Pokemon's tier.
+	 * @param string This Pokemon's tier.
+	 */
+	public void setTier(String string) {
+		tier = string;
+	}
+
+	/**
+	 * Gets this Pokemon's tier.
+	 * @return (String): This Pokemon's tier.
+	 */
+	public String getTier() {
+		return tier;
+	}
+
+	/**
+	 * Sets this Pokemon's types.
+	 * @param type1 (Type): This Pokemon's primary type.
+	 * @param type2 (Type): This Pokemon's secondary type (can be Type.None).
+	 */
+	public void setType(Type type1, Type type2) {
+		types[0] = type1;
+		types[1] = type2;
+	}
+	
+	/**
+	 * Gets our ID (position in the team, between 0 and 5 inclusive) and returns it.
+	 * @return (int): Our ID.
+	 */
+	public int getID() 
+	{
+		return id;
 	}
 	
 	/*
@@ -443,7 +744,7 @@ public class Pokemon {
 	
 	public void wobbuffet(boolean entering)
 	{
-		if(team.teamID == 0 && name.toLowerCase().startsWith("wobbuffet") || name.toLowerCase().startsWith("wynaut"))
+		if(team.getTeamID() == 0 && name.toLowerCase().startsWith("wobbuffet") || name.toLowerCase().startsWith("wynaut"))
 		{
 			if(entering)
 				GeniusectAI.setGeneric();
@@ -452,8 +753,9 @@ public class Pokemon {
 		}
 	}
 	
-	public void clone(Pokemon clone)
+	public Pokemon clone(Pokemon clone)
 	{
+		System.out.println("Cloning "+clone.name);
 		name = clone.name;
 		id = clone.id;
 		item = clone.item;
@@ -487,6 +789,7 @@ public class Pokemon {
 		status = clone.status;
 		effects = clone.effects;
 		enemy = clone.enemy;
+		return this;
 	}
 	
 	
@@ -535,12 +838,12 @@ public class Pokemon {
 			}
 			
 			found.item = new Item(importable.substring(m.start(2), m.end(2)));
-			found.ability = new Ability(importable.substring(m.start(3), m.end(3)));
+			found.setAbility(importable.substring(m.start(3), m.end(3)));
 			found.nature = Nature.fromString(importable.substring(m.start(4), m.end(4)));
 							
 			System.out.println("name: " + found.name);
 			System.out.println("item: " + found.item.name);
-			System.out.println("trait: " + found.ability.name);
+			System.out.println("trait: " + found.ability.getName());
 			System.out.println("nature: " + found.nature.toString());
 		}
 		String[] evP = {"(\\d+) HP","(\\d+) Atk","(\\d+) Def","(\\d+) SAtk","(\\d+) SDef","(\\d+) Spd"};
@@ -566,7 +869,7 @@ public class Pokemon {
 		while (m.find())
 		{
 			moves[i] = importable.substring(m.start(1), m.end(1));
-			found.moveset[i] = new Move(moves[i],found);
+			found.addMove(moves[i]);
 			i++;
 		}
 		
@@ -584,6 +887,7 @@ public class Pokemon {
 			System.out.format("No EVs were found.%n");
 		}
 		found.query();
+		System.err.println(found.getMove(0).name);
 		return found;
 	}
 }

@@ -16,8 +16,7 @@ public class HiddenPower extends Move {
 		pp = clone.pp;
 		accuracy = 100;
 		target = Target.Normal;
-		special =  true;
-		status = false;
+		moveType = MoveType.Special;
 		boostChance = 0;
 		recoilPercent = 0;
 		disabled = clone.disabled;

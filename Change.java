@@ -5,14 +5,18 @@
 
 package geniusect;
 
+import seleniumhelper.ShowdownHelper;
+import geniusect.ai.GeniusectAI;
+
 public class Change extends Action {
 	
 	public Pokemon switchTo;
 	
-	public Change(Pokemon changeTo)
+	public Change(Pokemon changeTo, Battle b)
 	{
 		switchTo = changeTo;
-		name = changeTo.name;
+		battle = b;
+		name = changeTo.getName();
 	}
 	
 	public void deploy()
@@ -21,28 +25,29 @@ public class Change extends Action {
 		if(sent)
 			return;
 		//System.err.println("Sending to showdown on turn "+GeniusectAI.turnCount / 2);
-		System.err.println(switchTo.team.userName+" (TeamID "+switchTo.team.teamID+"): Go, "+switchTo.name+"!");
+		System.err.println(switchTo.getTeam().getUsername()+" (TeamID "+switchTo.getTeam().getTeamID()+"): Go, "+switchTo.getName()+"!");
 		sent = true;
+		ShowdownHelper showdown = battle.getShowdown();
 		if(!sayOnSend.equals(""))
 		{
 			GeniusectAI.print(sayOnSend);
 			sayOnSend = "";
 		}
-		if(GeniusectAI.showdown == null || GeniusectAI.simulating)
+		if(showdown == null || GeniusectAI.isSimulating())
 		{
 			switchTo.onSendOut();
 		}
-		else if(GeniusectAI.showdown != null)
+		else if(showdown != null)
 		{
 			try
 			{
-				GeniusectAI.showdown.doMove(switchTo.name);
+				showdown.doMove(switchTo.getName());
 			}
 			catch (Exception e)
 			{
-				System.err.println("Could not switch to "+switchTo.name+"! Exception data:\n"+e);
-				GeniusectAI.print("Exception! Could not switch to "+switchTo.name+"!");
-				Action a = onException(this, e);
+				System.err.println("Could not switch to "+switchTo.getName()+"! Exception data:\n"+e);
+				GeniusectAI.print("Exception! Could not switch to "+switchTo.getName()+"!");
+				Action a = onException(this, e, battle);
 				if(a instanceof Attack)
 					((Attack) a).deploy();
 				else if(a instanceof Change)
@@ -84,9 +89,9 @@ public class Change extends Action {
 		return switcher;
 	}
 	
-	public static Pokemon bestChange(Pokemon us, Pokemon[] ourTeam, Pokemon enemy, Move predictedMove)
+	public static Pokemon bestChange(Pokemon us, Pokemon[] ourTeam, Pokemon enemy, Move predictedMove, ShowdownHelper showdown)
 	{
-		if(changedRecently() || us.hasMove("Destiny Bond")) //Make sure this is a sane thing to do, and then try to take opponent with us if we can.
+		if(changedRecently(showdown) || us.hasMove("Destiny Bond")) //Make sure this is a sane thing to do, and then try to take opponent with us if we can.
 			return us;
 		int damageStayIn = Pokequations.calculateDamagePercent(enemy, predictedMove, us).y;
 		Pokemon change = us;
@@ -95,12 +100,12 @@ public class Change extends Action {
 		{
 			if(ourTeam[i] != null && ourTeam[i].isAlive() && ourTeam[i] != us)
 			{
-				if(ourTeam[i].fullHP == 0)
+				if(ourTeam[i].getFullHP() == 0)
 					ourTeam[i].query();
 				int switchDamage = Pokequations.calculateDamagePercent(enemy, predictedMove, ourTeam[i]).y + calculateSwitchDamagePercent(ourTeam[i]);
 				if(change == us) //If we have not found someone to change to.
 				{
-					if(us.hpPercent - predictedDamage <= 0) //If we predict that this next attack will kill us:
+					if(us.getHealth() - predictedDamage <= 0) //If we predict that this next attack will kill us:
 					{
 						change = ourTeam[i];
 						predictedDamage = switchDamage;
@@ -126,10 +131,10 @@ public class Change extends Action {
 		return change;
 	}
 	
-	private static boolean changedRecently()
+	private static boolean changedRecently(ShowdownHelper showdown)
 	{
 		int sanity = changeCount;
-		if(GeniusectAI.showdown == null)
+		if(showdown == null)
 			sanity /= 2;
 		if(sanity >= 3)
 			return true;
@@ -141,8 +146,8 @@ public class Change extends Action {
 		//Sanity check: We don't want to come in and get killed the next turn, unless we can OHKO the enemy.
 		Move secondTurnBestMove = Pokequations.bestMove(enemy, saneSwitch);
 		Move secondTurnOurBestMove = Pokequations.bestMove(saneSwitch, enemy);
-		if(	secondTurnBestMove.getProjectedPercent(saneSwitch).y + switchDamage - saneSwitch.hpPercent > 0 || 
-			secondTurnOurBestMove.getProjectedPercent(enemy).x - enemy.hpPercent <= 0 && saneSwitch.isFasterThan(enemy))
+		if(	secondTurnBestMove.getProjectedPercent(saneSwitch).y + switchDamage - saneSwitch.getHealth() > 0 || 
+			secondTurnOurBestMove.getProjectedPercent(enemy).x - enemy.getHealth() <= 0 && saneSwitch.isFasterThan(enemy))
 			return true;
 		return false;
 	}

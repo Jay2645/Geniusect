@@ -26,53 +26,45 @@ public enum Type {
 		return name;
 	}
 	
-	public static Type fromSQL(int i)
+	public static Type fromSQL(String typeString)
 	{
-		Type type = Type.None;
-		switch(i)
-		{
-			case 0:	type = Type.Normal;
-					break;
-			case 1:	type = Type.Fire;
-					break;
-			case 2:	type = Type.Water;
-					break;
-			case 3:	type = Type.Electric;
-					break;
-			case 4:	type = Type.Grass;
-					break;
-			case 5:	type = Type.Ice;
-					break;
-			case 6:	type = Type.Fighting;
-					break;
-			case 7:	type = Type.Poison;
-					break;
-			case 8:	type = Type.Ground;
-					break;
-			case 9:	type = Type.Flying;
-					break;
-			case 10:type = Type.Psychic;	
-					break;
-			case 11:type = Type.Bug;
-					break;
-			case 12:type = Type.Rock;
-					break;
-			case 13:type = Type.Ghost;
-					break;
-			case 14:type = Type.Dragon;
-					break;
-			case 15:type = Type.Dark;
-					break;
-			case 16:type = Type.Steel;
-					break;
-			default:type = Type.None;
-		}
-		return type;
-	}
-	
-	public int toSQLID()
-	{
-		return sqlID;
+		if(typeString == null)
+			return Type.None;
+		if(typeString.toLowerCase().startsWith("fire"))
+			return Type.Fire;
+		if(typeString.toLowerCase().startsWith("water"))
+			return Type.Water;
+		if(typeString.toLowerCase().startsWith("grass"))
+			return Type.Grass;
+		if(typeString.toLowerCase().startsWith("normal"))
+			return Type.Normal;
+		if(typeString.toLowerCase().startsWith("fighting"))
+			return Type.Fighting;
+		if(typeString.toLowerCase().startsWith("poison"))
+			return Type.Poison;
+		if(typeString.toLowerCase().startsWith("steel"))
+			return Type.Steel;
+		if(typeString.toLowerCase().startsWith("dragon"))
+			return Type.Dragon;
+		if(typeString.toLowerCase().startsWith("ghost"))
+			return Type.Ghost;
+		if(typeString.toLowerCase().startsWith("electric"))
+			return Type.Electric;
+		if(typeString.toLowerCase().startsWith("flying"))
+			return Type.Flying;
+		if(typeString.toLowerCase().startsWith("dark"))
+			return Type.Dark;
+		if(typeString.toLowerCase().startsWith("psychic"))
+			return Type.Psychic;
+		if(typeString.toLowerCase().startsWith("ground"))
+			return Type.Ground;
+		if(typeString.toLowerCase().startsWith("rock"))
+			return Type.Rock;
+		if(typeString.toLowerCase().startsWith("ice"))
+			return Type.Ice;
+		if(typeString.toLowerCase().startsWith("bug"))
+			return Type.Bug;
+		else return Type.None;
 	}
 	
 	public int toGameID()
