@@ -9,7 +9,7 @@ import geniusect.ai.GeniusectAI;
 
 import java.awt.Point;
 
-import seleniumhelper.ShowdownHelper;
+import com.seleniumhelper.ShowdownHelper;
 
 public class Attack extends Action {
 	public Move move;
@@ -73,10 +73,12 @@ public class Attack extends Action {
 		{
 			if(!attacker.isAlive()) //We can only attack if we're alive.
 				return 0;
-			int damageDone = defender.onNewAttack(this);
+			Damage damageDone = new Damage(move, attacker, defender);
+			int damage = damageDone.applyDamage();
+			//int damageDone = defender.onNewAttack(this);
 			if(defender.isAlive())
-				System.err.println("Damage done: "+damageDone+"%");
-			return damageDone;
+				System.err.println("Damage done: "+damage+"%");
+			return damage;
 		}
 		else if(showdown != null)
 		{

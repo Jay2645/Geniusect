@@ -6,9 +6,13 @@
 
 package geniusect;
 
+import geniusect.ai.GeniusectAI;
+
 import java.awt.Point;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.seleniumhelper.ShowdownHelper;
 
 public class Move {
 	public String name;
@@ -20,10 +24,11 @@ public class Move {
 	public Target target;
 	public Status condition = null; //A status condition to inflict upon a target.
 	public Map<VolatileStatus, Target> vol = new HashMap<VolatileStatus, Target>(); //The volatile status condition caused and its target.
-	public Map<Stat, String> boosts = new HashMap<Stat, String>(); //What stats are boosted. <Stat, int> throws error for some reason?
+	public int boosts[] = {0,0,0,0,0,0};
 	public MoveType moveType = MoveType.Status;
 	public int boostChance = 0;
 	public int recoilPercent = 0;
+	public int priority = 0;
 	
 	public boolean isContact = false;
 	public boolean disabled = false;
@@ -70,6 +75,13 @@ public class Move {
 		}
 		else
 			SQLHandler.queryMove(this);
+		if(	name.toLowerCase().contains("overheat") || name.toLowerCase().contains("draco meteor") || //Hardcode these for now.
+			name.toLowerCase().contains("leaf storm") || name.toLowerCase().contains("psycho boost"))
+			{
+				System.out.println(name+" lowers the SpA stat by two.");
+				boosts[Stat.SpA.toInt()] = -2;
+				boostChance = 1;
+			}
 	}
 	
 	public void onMoveUsed(Pokemon enemy, int damageDone, boolean wasCrit)
@@ -77,16 +89,43 @@ public class Move {
 		//Called when this move is used.
 		if(user.getItem() != null && user.getItem().name.toLowerCase().startsWith("choice"))
 			user.setLockedInto(this);
-		if(enemy.getAbility() == null)
+		ShowdownHelper showdown = enemy.getTeam().getShowdown();
+		if(showdown == null || user.getTeam().getTeamID() == 1)
 		{
-			pp--;
+			if(enemy.getAbility() == null)
+			{
+				pp--;
+			}
+			else
+			{
+				if(enemy.getAbility().getName().toLowerCase().startsWith("pressure"))
+					pp -=2;
+				else
+					pp--;
+			}
+			
 		}
 		else
 		{
-			if(enemy.getAbility().getName().toLowerCase().startsWith("pressure"))
-				pp -=2;
-			else
-				pp--;
+			try 
+			{
+				pp = showdown.getMoveRemainingPP(name);
+			} 
+			catch (Exception e) 
+			{
+				e.printStackTrace();
+				if(enemy.getAbility() == null)
+				{
+					pp--;
+				}
+				else
+				{
+					if(enemy.getAbility().getName().toLowerCase().startsWith("pressure"))
+						pp -=2;
+					else
+						pp--;
+				}
+			}
 		}
 		if(0 >= pp)
 		{
@@ -104,13 +143,13 @@ public class Move {
 	
 	public boolean withinExpectedRange(int damage, Pokemon p, boolean wasCrit)
 	{
-		if(wasCrit && user.getAbility().getName().toLowerCase().startsWith("sniper"))
+		if(wasCrit && (user.getAbility() == null || !user.getAbility().getName().toLowerCase().startsWith("sniper")))
 		{
-			damage /= 3;
+			damage /= 2;
 		}
 		else if(wasCrit)
 		{
-			damage /= 2;
+			damage /= 3;
 		}
 		if(damage < projectedPercent.get(p).x || damage > projectedPercent.get(p).y)
 			return false;
@@ -144,13 +183,13 @@ public class Move {
 		else
 		{
 			damage = Pokequations.calculateDamagePercent(us, this, enemy).x;
-			if(boostChance == 1)
+			if(boostChance == 1 && (user.getTeam().getShowdown() == null || GeniusectAI.isSimulating()))
 			{
 				for(int i = 0; i < 6; i++)
 				{
 					boostStats(Stat.fromInt(i));
 				}
-			}
+			}  //It's more accurate to get stat drops straight from Showdown and apply them there.
 		}
 		return damage;
 	}
@@ -206,9 +245,9 @@ public class Move {
 	
 	public void boostStats(Stat boost)
 	{
-		if(boosts.get(boost).equals("0"))
+		if(boosts[boost.toInt()] == 0)
 			return;
-		user.giveBoosts(boost, Integer.parseInt(boosts.get(boost)));
+		user.giveBoosts(boost, boosts[boost.toInt()]);
 	}
 	
 	public MoveType getType()

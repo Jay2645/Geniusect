@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.firefox.FirefoxDriver;
 
-import seleniumhelper.ShowdownHelper;
+import com.seleniumhelper.ShowdownHelper;
 
 /**
  * The AI logic for deciding what to do in a battle.
@@ -228,7 +228,9 @@ public class GeniusectAI {
 					a.defenderSwap(c.switchTo);
 				}
 			}
-			if(Team.getEnemyTeam(enemyID).getActive().isFasterThan(Team.getEnemyTeam(teamID).getActive())) //Check who is faster.
+			if(	Team.getEnemyTeam(enemyID).getActive().isFasterThan(Team.getEnemyTeam(teamID).getActive()) || //Check who is faster OR
+				lastTurnEnemy instanceof Attack && nextTurn instanceof Attack && 
+				((Attack)nextTurn).move.priority > ((Attack)lastTurnEnemy).move.priority) //Check if we have priority.
 			{	//Things won't send if they've already been sent, so we don't need to check if we've already sent it.
 				nextTurn.sendToShowdown(b);
 				lastTurnEnemy.sendToShowdown(b);
@@ -421,6 +423,8 @@ public class GeniusectAI {
 		Pokemon usActive = us.getActive();
 		Pokemon enemyActive = enemy.getActive();
 		System.out.println("I am using a "+usActive.getName()+" with "+usActive.getHealth()+"% health.");
+		if(enemyActive == null)
+			return;
 		print("Here's what I know about the enemy's "+enemyActive.getName());
 		print("It has "+enemyActive.getHealth()+"% HP.");
 		System.out.println("Its types are "+enemyActive.getType(0)+" and "+enemyActive.getType(1));
@@ -455,7 +459,7 @@ public class GeniusectAI {
 		{
 			print(evs[i]+"");
 		}
-		if(ourBestMove != null)
+		/*if(ourBestMove != null)	//All this is wildly inaccurate.
 		{
 			print("If I use my best move against them, "+ourBestMove.name+", it will do about "+ ourBestMove.getProjectedDamage(enemyActive, true) +" HP worth of damage ("+ourBestMove.getProjectedPercent(enemyActive, true)+" percent).");
 			print("I project it will take about "+turnsToKillThem+" turns to kill their "+enemyActive.getName()+".");
@@ -472,7 +476,7 @@ public class GeniusectAI {
 				Attack attacking = (Attack) nextTurn;
 				print(usActive.getName()+" plans to use "+attacking.move.name+".");
 			}
-		}
+		}*/
 		Pokemon[] ourTeam = usActive.getPokemonTeam();
 		System.err.println("Still living Pokemon (us):");
 		for(int i = 0; i < ourTeam.length; i++)
@@ -550,7 +554,7 @@ public class GeniusectAI {
 	
 	/**
 	 * Switches the AI to using generic behavior.
-	 * @see Geniusect.ai.GeniusectAI#setMinimax()
+	 * @see Geniusect.ai.GenericAI#bestMove(Battle b)
 	 */
 	public static void setGeneric()
 	{
@@ -598,6 +602,15 @@ public class GeniusectAI {
 	protected static int getEnemyID() 
 	{
 		return enemyID;
+	}
+	
+	/**
+	 * Returns our current Showdown hookup.
+	 * @return (ShowdownHelper): Our Showdown hookup.
+	 */
+	protected static ShowdownHelper getShowdown()
+	{
+		return showdown;
 	}
 }
 

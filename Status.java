@@ -38,7 +38,7 @@ public enum Status {
 		}
 	}
 	
-	public double onNewTurn()
+	public void onNewTurn()
 	{
 		turnsActive++;
 		if(this == Status.ToxicPoison)
@@ -52,7 +52,8 @@ public enum Status {
 		if(this == Status.Rest && turnsActive == 2 || this == Status.Sleep && turnsActive == 3 || this == Status.Freeze && turnsActive == 5)
 			victim.inflictStatus(Status.None);
 		damage *= 100;
-		return damage;
+		int intDamage = (int)Math.round(damage);
+		new Damage(intDamage, victim);
 	}
 	
 	public void resetActive()

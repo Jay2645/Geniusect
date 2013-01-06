@@ -9,10 +9,12 @@ import geniusect.ai.GenericAI;
 import geniusect.ai.MinimaxNode;
 import geniusect.ai.GeniusectAI;
 
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import seleniumhelper.ShowdownHelper;
+import com.seleniumhelper.ShowdownHelper;
+import com.seleniumhelper.ShowdownHelper.TurnEndStatus;
 
 public class Action 
 {
@@ -23,6 +25,7 @@ public class Action
 	public int score = 0; //The minimax score for this action.
 	public int attempt = 0; //How many times we've attempted to try this.
 	protected Battle battle = null;
+	protected TurnEndStatus nextTurn;
 	
 	public static int changeCount = 0; //How many times in a row have we changed? (Sanity check.)
 	
@@ -89,10 +92,36 @@ public class Action
 		b.isFirstTurn(false);
 		if(showdown != null)
 		{
-			if(showdown.waitForNextTurn(5))
+			nextTurn = showdown.waitForNextTurn(5);
+			System.out.println(nextTurn);
+			if(nextTurn == TurnEndStatus.ATTACK || nextTurn == TurnEndStatus.UNKNOWN)
 				b.newTurn();
-			else
+			else if(nextTurn == TurnEndStatus.SWITCH)
+			{
+				Pokemon change = b.getTeam(0).getActive().onDie();
+				if(change == null)
+				{
+					System.err.println("Could not find Pokemon to switch to!");
+					showdown.leaveBattle();
+				}
+				else
+				{
+					try
+					{
+						System.out.println("We have died! Switching to "+change.getName());
+						showdown.switchTo(change.getName(), false);
+						b.newTurn();
+					}
+					catch(Exception e)
+					{
+						onException(this,e,b);
+					}
+				}
+			}
+			else if (nextTurn == TurnEndStatus.WON)
 				b.gameOver(true);
+			else if (nextTurn == TurnEndStatus.LOST)
+				b.gameOver(false);
 		}
 	}
 	
@@ -271,15 +300,17 @@ public class Action
 			}
 			else
 				t = battle.getTeam(0);
-			Pokemon poke = t.addPokemon(faint, battle.getShowdown());
+			Pokemon poke = t.getPokemon(faint);
+			if(poke == null)
+				System.err.println("Could not find Pokemon "+faint);
 			poke.onDie();
 		}
-		Pattern p = Pattern.compile(" sent out (.+)!", Pattern.MULTILINE);
-		Matcher m = p.matcher(text);
 		for(int i = 0; i < owner.length; i++)
 		{
 			if(owner[i].equals(""))
 				continue;
+			Pattern p = Pattern.compile(owner[i]+" sent out (.+)!", Pattern.MULTILINE);
+			Matcher m = p.matcher(text);
 			if(m.find())
 			{
 				String tempname = text.substring(m.start(1), m.end(1));
@@ -304,7 +335,7 @@ public class Action
 			}
 			if(pokemon[i] != null)
 			{
-				Pokemon poke = battle.getTeam(i).addPokemon(pokemon[i], battle.getShowdown());
+				Pokemon poke = battle.getTeam(i).addPokemon(pokemon[i], battle.getShowdown()); //Not getPokemon because we don't know if we've seen it yet.
 				poke.onSendOut();
 				switched = true;
 			}
@@ -315,6 +346,7 @@ public class Action
 	protected static Action onException(Action failure, Exception e, Battle battle)
 	{
 		//Called if everything breaks.
+		ShowdownHelper showdown = battle.getShowdown();
 		if(failure.attempt == 0)
 		{
 			GeniusectAI.print("Here's what I tried to do:");
@@ -328,16 +360,32 @@ public class Action
 			GeniusectAI.print("Failed!");
 			GeniusectAI.print("Sorry! Geniusect is still in early development and is very buggy.");
 			GeniusectAI.print("If I don't leave, please hit the 'Kick inactive player button.'");
-			battle.getShowdown().leaveBattle();
+			if(showdown != null)
+				showdown.leaveBattle();
 			battle.isPlaying(false);
 			GeniusectAI.setBattle(null);
 			return null;
 		}
 		GeniusectAI.print("Attempting to rectify: attempt number "+failure.attempt+" / 4");
+		if(showdown != null)
+		{
+			Team enemy = battle.getTeam(1);
+			String activeEnemy = showdown.getCurrentPokemon(enemy.getUsername(),true);
+			Pokemon enemyPoke = enemy.getPokemon(activeEnemy);
+			if(enemyPoke != null)
+				enemy.setActive(enemyPoke);
+			//TODO: Recheck enemy team's alive/dead states.
+			Team us = battle.getTeam(0);
+			String activeUs = showdown.getCurrentPokemon(us.getUsername(),true);
+			Pokemon poke = us.getPokemon(activeUs);
+			if(poke != null)
+				us.setActive(poke);
+			//TODO: Recheck our team's alive/dead states.
+			poke.resetMoves(showdown.getMoves());
+		}
 		Action a;
 		if(battle.getTeam(0).getActive().isAlive())
 		{
-			battle.getShowdown().getMoves();
 			a = GenericAI.bestMove(battle);
 		}
 		else

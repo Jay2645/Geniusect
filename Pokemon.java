@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import seleniumhelper.ShowdownHelper;
+import com.seleniumhelper.ShowdownHelper;
 
 public class Pokemon {
 	protected String name;
@@ -29,7 +29,7 @@ public class Pokemon {
 	protected Type[] types = {Type.None, Type.None};
 	protected Ability ability;
 	protected Nature nature = Nature.Hardy;
-	protected String tier;
+	protected Tier tier;
 	
 	protected ArrayList<Type> immunities = new ArrayList<Type>();
 	
@@ -90,7 +90,8 @@ public class Pokemon {
 		}
 		else if(team == null)
 			team = enemy.enemyTeam;
-		onSendOut();
+		if(team.getActive() == null)
+			onSendOut();
 	}
 	
 	public void onSendOut()
@@ -132,6 +133,8 @@ public class Pokemon {
 		alive = false;
 		if(!active)
 			onWithdraw();
+		if(showdown != null && team.getTeamID() == 1)
+			return null;
 		Change change = GeniusectAI.onPokemonDeath(this);
 		if(change == null)
 			return null;
@@ -143,30 +146,37 @@ public class Pokemon {
 		showdown = team.getShowdown();
 		if(team.getTeamID() == 0 && showdown != null)
 		{
-			List<String> moves = showdown.getMoves();
-			for(int i = 0; i < moves.size(); i++)
+			try
 			{
-				addMove(moves.get(i));
+				List<String> moves = showdown.getMoves();
+				for(int i = 0; i < moves.size(); i++)
+				{
+					addMove(moves.get(i));
+				}
+			}
+			catch(Exception e)
+			{
+				System.out.println("Could not find "+name+"'s moves! Exception data:\n"+e);
 			}
 		}
 	}
 	
-	public int onNewAttack(Attack a)
+	public int onNewAttack(Damage damage)
 	{
 		//Called when predicting future events.
 		//Whereas the method below takes the moves that THIS Pokemon did, this method takes a move the OTHER Pokemon did.
 		//It returns the amount of damage done in this turn.
 		int preHP = hpPercent;
-		damage(a);
+		damage.applyDamage();
 		for(int i = 0; i < effects.size(); i++)
 		{
 			effects.get(i).onNewTurn();
 		}
-		damage((int)Math.round(status.onNewTurn()));
-		//System.err.println("PreHP: "+preHP+", HP percent: "+hpPercent);
+		status.onNewTurn();
 		damageDoneLastTurn = preHP - hpPercent;
 		System.out.println(name+" took "+damageDoneLastTurn+"% damage.");
-		a.attacker.onNewTurn(a.name, damageDoneLastTurn, false);
+		damage.attacker.onNewTurn(damage.attack.name, damageDoneLastTurn, false);
+		
 		return damageDoneLastTurn;
 	}
 	
@@ -298,6 +308,7 @@ public class Pokemon {
 				//First iterate through all moves to make sure we don't already have this move.
 				if(moveset[n] != null && moveset[n].name.toLowerCase().startsWith(moveName.toLowerCase()))
 				{
+					System.out.println(name+" already has move "+moveName+"!");
 					move = moveset[n];
 					return move;
 				}
@@ -603,17 +614,26 @@ public class Pokemon {
 
 	/**
 	 * Sets this Pokemon's tier.
-	 * @param string This Pokemon's tier.
+	 * @param newTier (Tier): This Pokemon's new tier.
+	 */
+	public void setTier(Tier newTier)
+	{
+		tier = newTier;
+	}
+	
+	/**
+	 * Sets this Pokemon's tier.
+	 * @param string (String): This Pokemon's tier.
 	 */
 	public void setTier(String string) {
-		tier = string;
+		tier = Tier.tierFromString(string);
 	}
 
 	/**
 	 * Gets this Pokemon's tier.
-	 * @return (String): This Pokemon's tier.
+	 * @return (Tier): This Pokemon's tier.
 	 */
-	public String getTier() {
+	public Tier getTier() {
 		return tier;
 	}
 
@@ -735,7 +755,7 @@ public class Pokemon {
 	
 	public void resetBoosts()
 	{
-		for(int i = 0; i < 6; i++)
+		for(int i = 0; i < boosts.length; i++)
 		{
 			boosts[i] = 0;
 		}
@@ -889,5 +909,36 @@ public class Pokemon {
 		found.query();
 		System.err.println(found.getMove(0).name);
 		return found;
+	}
+
+	/**
+	 * Resets all this Pokemon's moves and populates from a String array.
+	 * @param newMoves (List<String>): The list of new moves to populate the array with.
+	 */
+	public void resetMoves(List<String> newMoves) 
+	{
+		for(int i = 0; i < newMoves.size(); i++)
+		{
+			addMove(newMoves.get(i));
+		}
+	}
+
+	/**
+	 * Gets if we can switch or not.
+	 * @return TRUE if we can switch, else FALSE.
+	 */
+	public boolean canSwitch() 
+	{
+		return canSwitch;
+	}
+
+	/**
+	 * Returns the boosts of the specified stat.
+	 * @param stat (Stat): The stat to check.
+	 * @return (int): The number of boosts we have to that stat.
+	 */
+	public int getBoosts(Stat stat) 
+	{
+		return boosts[stat.toInt()];
 	}
 }

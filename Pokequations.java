@@ -36,6 +36,8 @@ public class Pokequations {
 		//Returns damage dealt as a point(minValue, maxValue).
 		if(move.getType() == MoveType.Status)
 			return new Point(0,0);
+		else if(move.name.toLowerCase().startsWith("seismic toss") || move.name.toLowerCase().startsWith("night shade"))
+			return new Point(attacker.getLevel(), attacker.getLevel());
 		Type[] immunities = defender.getImmunities();
 		for(int i = 0; i < immunities.length; i++)
 		{
@@ -49,10 +51,13 @@ public class Pokequations {
 		int attackStat;
 		int defenseStat;
 		int level = attacker.getLevel();
+		Battle battle = attacker.getTeam().getBattle();
 		if(move.getType() == MoveType.Special)
 		{
 			attackStat = attacker.boostedStat(Stat.SpA);
 			defenseStat = defender.boostedStat(Stat.SpD);
+			if(battle.getWeather() == Weather.Sandstorm && (defender.getType(0) == Type.Rock || defender.getType(1) == Type.Rock))
+				defenseStat = statBoost(attacker.getBoosts(Stat.SpD) + 1,attacker.getStats(Stat.SpD));
 		}
 		else
 		{
@@ -63,8 +68,10 @@ public class Pokequations {
 			defenseStat = 100; //Means we could not look up this Pokemon's defense stat for some reason.
 		//TODO: Convert Hidden Power to correct type.
 		double multiplier = damageMultiplier(move.type, defender.getTypes());
+		double modifier = attacker.getAbilityModifier();
+		modifier *= weatherModifier(battle,move.type);
 		
-		return calculateDamage(level, attackStat, attackPower, defenseStat, stab, multiplier,attacker.getAbilityModifier());
+		return calculateDamage(level, attackStat, attackPower, defenseStat, stab, multiplier,modifier);
 	}
 	
 	private static Point calculateDamage(int level, int attackStat, int attackPower, int defenseStat, double stab, double multiplier, double modifier)
@@ -80,7 +87,25 @@ public class Pokequations {
 		return p;
 	}
 	
-	
+	public static double weatherModifier(Battle battle, Type type)
+	{
+		Weather weather = battle.getWeather();
+		if(weather == Weather.Sun)
+		{
+			if(type == Type.Fire)
+				return 1.5;
+			if(type == Type.Water)
+				return 0.5;
+		}
+		else if(weather == Weather.Rain)
+		{
+			if(type == Type.Water)
+				return 1.5;
+			if(type == Type.Fire)
+				return 0.5;
+		}
+		return 1;
+	}
 	
 	public static int calculateAtkStat(Pokemon attacker, Move move, Pokemon defender, int percentageLost)
 	{

@@ -162,6 +162,10 @@ public class MinimaxNode
 		child.battle = battle;
 		child.battle.newTurn(child.ourActive.getTeam());
 		child.battle.setNextTurn(decision);
+		child.ourActive.getTeam().setBattle(child.battle);
+		child.enemyActive.getTeam().setBattle(child.battle);
+		child.ourActive.getAbility().setBattle(child.battle);
+		child.enemyActive.getAbility().setBattle(child.battle);
 		GeniusectAI.simulateTurn(child);
 		if(decision != null)
 		{

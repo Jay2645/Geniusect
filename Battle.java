@@ -5,7 +5,7 @@ import geniusect.ai.GeniusectAI;
 
 import java.util.List;
 
-import seleniumhelper.ShowdownHelper;
+import com.seleniumhelper.ShowdownHelper;
 
 /**
  * A class representing a battle.
@@ -97,41 +97,51 @@ public class Battle {
 									"\n- Earthquake";
 	
 			
-	private String importableEnemy =	"Forretress @ Leftovers " +
-										"\nTrait: Sturdy" +
-										"\nEVs: 252 HP / 4 Atk / 252 Def" +
-										"\nRelaxed Nature" +
-										"\n- Toxic Spikes" +
-										"\n- Gyro Ball" +
-										"\n- Stealth Rock" +
-										"\n- Rapid Spin" +
-										"\n" +
+	private String importableEnemy =	"Team Name: Phagocyte" +
 										"\nGarchomp @ Choice Scarf" +
 										"\nTrait: Rough Skin" +
-										"\nEVs: 4 HP / 252 Atk / 252 Spd" +
-										"\nAdamant Nature" +
-										"\n- Outrage" +
-										"\n- Earthquake" +
+										"\nEVs: 252 Spd / 252 Atk / 4 HP" +
+										"\nJolly Nature" +
+										"\n- Aqua Tail" +
 										"\n- Stone Edge" +
-										"\n- Brick Break" +
+										"\n- Earthquake" +
+										"\n- Outrage" +
 										"\n" +
-										"\nChansey @ Eviolite" +
-										"\nTrait: Natural Cure" +
-										"\nEVs: 248 HP / 252 Def / 8 Spd" +
-										"\nBold Nature" +
-										"\n- Toxic" +
-										"\n- Protect" +
-										"\n- Wish" +
-										"\n- Seismic Toss" +
+										"\nHeatran @ Choice Scarf" +
+										"\nTrait: Flash Fire" +
+										"\nEVs: 252 SAtk / 252 Spd / 4 SDef" +
+										"\nTimid Nature" +
+										"\n- Overheat" +
+										"\n- Earth Power" +
+										"\n- Hidden Power" +
+										"\n- Dark Pulse" +
 										"\n" +
 										"\nLatios @ Choice Specs" +
 										"\nTrait: Levitate" +
-										"\nEVs: 6 HP / 252 SAtk / 252 Spd" +
+										"\nEVs: 252 Spd / 252 SAtk / 4 HP" +
 										"\nTimid Nature" +
-										"\n- Surf" +
 										"\n- Psyshock" +
 										"\n- Draco Meteor" +
-										"\n- Hidden Power" +
+										"\n- SolarBeam" +
+										"\n- Thunderbolt" +
+										"\n" +
+										"\nScizor @ Leftovers" +
+										"\nTrait: Technician" +
+										"\nEVs: 252 Atk / 252 HP / 4 SDef" +
+										"\nAdamant Nature" +
+										"\n- Bullet Punch" +
+										"\n- Bug Bite" +
+										"\n- Swords Dance" +
+										"\n- Roost" +
+										"\n" +
+										"\nVolcarona @ Leftovers" +
+										"\nTrait: Flame Body" +
+										"\nEVs: 216 Def / 240 HP / 52 Spd" +
+										"\nBold Nature" +
+										"\n- Bug Buzz" +
+										"\n- Fiery Dance" +
+										"\n- Quiver Dance" +
+										"\n- Roost" +
 										"\n" +
 										"\nConkeldurr @ Leftovers" +
 										"\nTrait: Guts" +
@@ -140,19 +150,10 @@ public class Battle {
 										"\n- Bulk Up" +
 										"\n- Drain Punch" +
 										"\n- Payback" +
-										"\n- Mach Punch" +
-										"\n" +
-										"\nHeatran @ Choice Scarf" +
-										"\nTrait: Flash Fire" +
-										"\nEVs: 6 HP / 252 SAtk / 252 Spd" +
-										"\nModest Nature" +
-										"\n- Overheat" +
-										"\n- Earth Power" +
-										"\n- Hidden Power" +
-										"\n- Dragon Pulse";
+										"\n- Mach Punch";
 
 	private Team players[] = new Team[2];
-	private int turnsToSimulate = 100; //How many turns we simulate, if Showdown is not running?
+	private int turnsToSimulate = 4500; //How many turns we simulate, if Showdown is not running?
 	private int turnCount = 1; //The current turn.
 	private boolean playing = false; // TRUE if we have found a battle.
 	private boolean firstTurn = true; // TRUE if it is the first turn.
@@ -228,19 +229,25 @@ public class Battle {
 		if(showdown!= null)
 		{
 			//Populate each team.
+			String[] userName = new String[2];
+			userName[0] = showdown.getUserName();
+			userName[1] = showdown.getOpponentName();
 			for(int i = 0; i < 2; i++)
 			{
-				String userName = showdown.getUserName();
-				players[i].setUserName(userName);
-				List<String> ourPokes= showdown.getTeam(userName);
+				players[i].setUserName(userName[i]);
+				List<String> ourPokes= showdown.getTeam(userName[i]);
 				//TODO: Get moves for each Pokemon, if known.
 				for(int n = 0; n < ourPokes.size(); n++)
+				{
+					System.out.println(ourPokes.get(n)+", "+userName[i]);
 					players[i].addPokemon(ourPokes.get(n),showdown);
+				}
 			}
 		}
 		//TODO: If we can choose lead, do so.
 		players[0].getActive().changeEnemy(players[1].getActive());
 		players[1].getActive().changeEnemy(players[0].getActive());
+		
 	}
 	
 	public void newTurn()
@@ -250,7 +257,7 @@ public class Battle {
 	
 	public void newTurn(Team t)
 	{
-		if(!playing)
+		if(!playing || t.getActive() == null)
 			return;
 		int turnNumber;
 		if(showdown == null || GeniusectAI.isSimulating())
@@ -276,10 +283,11 @@ public class Battle {
 			if(nextTurn != null)
 				nextTurn.updateLastTurn(this); //TODO: Remake lastTurnEnemy from the data here.
 			lastTurnUs = nextTurn;
+			//		TODO:
+			//		FETCH:
 			//		- Enemy move used (and if any boosts were obtained)
 			//		- The PP of the move we just used (and if any boosts were obtained)
 			//		CHECK:
-			//		- If we died (and change using generic logic if so)
 			//		- Status inflicted
 			//		- Entry hazards placed
 		}
@@ -318,6 +326,7 @@ public class Battle {
 	
 	public void setWeather(Weather weatherType)
 	{
+		System.out.println("The weather is now "+weatherType+"!");
 		weather = weatherType;
 	}
 	

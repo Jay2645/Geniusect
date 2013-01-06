@@ -5,7 +5,7 @@
 
 package geniusect;
 
-import seleniumhelper.ShowdownHelper;
+import com.seleniumhelper.ShowdownHelper;
 
 public class Team {
 	public Team(int id, Battle b)
@@ -129,6 +129,8 @@ public class Team {
 		Pokemon p = null;
 		for(int i = 0; i < team.length; i++)
 		{
+			if(team[i] == null)
+				continue;
 			if(team[i].nameIs(name))
 			{
 				p = team[i];
@@ -157,6 +159,24 @@ public class Team {
 	public String getUsername()
 	{
 		return userName;
+	}
+	
+	/**
+	 * Sets the battle to the specified battle.
+	 * @param b (Battle): The battle to set our battle to.
+	 */
+	public void setBattle(Battle b)
+	{
+		battle = b;
+	}
+	
+	/**
+	 * Gets our current battle.
+	 * @return (Battle): Our current battle.
+	 */
+	public Battle getBattle()
+	{
+		return battle;
 	}
 	
 	/**
@@ -219,8 +239,9 @@ public class Team {
 		team[id] = pokemon;
 	}
 	/**
-	 * @param pokemon
-	 * @return
+	 * Looks up the team of the specified Pokemon.
+	 * @param pokemon (Pokemon): The Pokemon to look up.
+	 * @return (Team): That Pokemon's team.
 	 */
 	public static Team lookupPokemon(Pokemon pokemon) 
 	{
@@ -237,8 +258,9 @@ public class Team {
 		return team;
 	}
 	/**
-	 * @param pokemon
-	 * @return
+	 * Looks up if this team has this Pokemon.
+	 * @param pokemon (Pokemon): The Pokemon to look up.
+	 * @return TRUE if it does have this Pokemon, else FALSE.
 	 */
 	private boolean hasPokemon(Pokemon pokemon) 
 	{

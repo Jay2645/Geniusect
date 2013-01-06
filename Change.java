@@ -5,7 +5,7 @@
 
 package geniusect;
 
-import seleniumhelper.ShowdownHelper;
+import com.seleniumhelper.ShowdownHelper;
 import geniusect.ai.GeniusectAI;
 
 public class Change extends Action {
@@ -41,7 +41,7 @@ public class Change extends Action {
 		{
 			try
 			{
-				showdown.doMove(switchTo.getName());
+				showdown.switchTo(switchTo.getName(), false);
 			}
 			catch (Exception e)
 			{
@@ -65,7 +65,7 @@ public class Change extends Action {
 		return damage;
 	}
 	
-	public static Pokemon bestCounter(Pokemon[] ourTeam, Pokemon enemy)
+	public static Pokemon bestCounter(Pokemon[] ourTeam, Pokemon enemy, Pokemon removeFromCalc)
 	{
 		//Returns the best response to a threat.
 		int damage = Integer.MAX_VALUE;
@@ -74,6 +74,11 @@ public class Change extends Action {
 		{
 			if(ourTeam[i] == null)
 				continue;
+			if(removeFromCalc != null)
+			{
+				if(ourTeam[i].getName().equals(removeFromCalc.getName()))
+					continue;
+			}
 			if(ourTeam[i].isAlive())
 			{
 				if(switcher == null)
@@ -89,9 +94,14 @@ public class Change extends Action {
 		return switcher;
 	}
 	
+	public static Pokemon bestCounter(Pokemon[] ourTeam, Pokemon enemy)
+	{
+		return bestCounter(ourTeam,enemy,null);
+	}
+	
 	public static Pokemon bestChange(Pokemon us, Pokemon[] ourTeam, Pokemon enemy, Move predictedMove, ShowdownHelper showdown)
 	{
-		if(changedRecently(showdown) || us.hasMove("Destiny Bond")) //Make sure this is a sane thing to do, and then try to take opponent with us if we can.
+		if(changedRecently(showdown) || us.hasMove("Destiny Bond")) //Make sure this is a sane thing to do or try to take opponent with us if we can.
 			return us;
 		int damageStayIn = Pokequations.calculateDamagePercent(enemy, predictedMove, us).y;
 		Pokemon change = us;
@@ -102,10 +112,12 @@ public class Change extends Action {
 			{
 				if(ourTeam[i].getFullHP() == 0)
 					ourTeam[i].query();
-				int switchDamage = Pokequations.calculateDamagePercent(enemy, predictedMove, ourTeam[i]).y + calculateSwitchDamagePercent(ourTeam[i]);
+				int switchDamage = Pokequations.bestMove(enemy, ourTeam[i]).getProjectedPercent(ourTeam[i], true) + calculateSwitchDamagePercent(ourTeam[i]);
+				if(ourTeam[i].getHealth() - switchDamage <= 0)
+					continue;				
 				if(change == us) //If we have not found someone to change to.
 				{
-					if(us.getHealth() - predictedDamage <= 0) //If we predict that this next attack will kill us:
+					if(us.getHealth() - predictedDamage <= 0) 
 					{
 						change = ourTeam[i];
 						predictedDamage = switchDamage;
