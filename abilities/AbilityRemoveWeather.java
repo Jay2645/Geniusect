@@ -12,7 +12,6 @@ import geniusect.Weather;
 public class AbilityRemoveWeather extends Ability {
 	public AbilityRemoveWeather()
 	{
-		weather = battle.getWeather();
 		rating = 3;
 	}
 	private Weather weather;

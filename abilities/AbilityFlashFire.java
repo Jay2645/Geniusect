@@ -1,5 +1,6 @@
 package geniusect.abilities;
 
+import geniusect.Battle;
 import geniusect.Pokemon;
 import geniusect.Type;
 import geniusect.ai.GeniusectAI;
@@ -12,7 +13,7 @@ public class AbilityFlashFire extends Ability
 {
 	public AbilityFlashFire()
 	{
-		battle = GeniusectAI.getBattle();
+		rating = 3;
 	}
 	@Override
 	public void setUser(Pokemon u)
@@ -20,4 +21,6 @@ public class AbilityFlashFire extends Ability
 		u.addImmunity(Type.Fire);
 		user = u;
 	}
+	
+	//TODO: Boost the power of fire-type moves.
 }

@@ -12,7 +12,7 @@ public class AbilityLevitate extends Ability
 {
 	public AbilityLevitate()
 	{
-		battle = GeniusectAI.getBattle();
+		rating = 3.5;
 	}
 	public void setUser(Pokemon u)
 	{

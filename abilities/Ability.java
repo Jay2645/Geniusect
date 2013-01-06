@@ -33,6 +33,8 @@ public class Ability {
 			Ability able = abilityDex.get(n);
 			able.name = name;
 			able.setUser(u);
+			able.setBattle(battle);
+			ability = able;
 			u.setAbility(able);
 			System.err.println(u.getName()+" has ability "+able.getName());
 		}
@@ -42,8 +44,9 @@ public class Ability {
 	protected double rating;
 	protected double stab = 1.5;
 	protected double powerBoost = 1;
-	protected Damage onFaintDamage = new Damage();
+	protected Damage onFaintDamage;
 	protected Battle battle;
+	protected Ability ability;
 	protected static Map<String, Ability> abilityDex;
 	
 	/**
@@ -62,6 +65,8 @@ public class Ability {
 	public void setBattle(Battle b)
 	{
 		battle = b;
+		if(ability != null)
+			ability.setBattle(b);
 	}
 	
 	/*
@@ -107,17 +112,20 @@ public class Ability {
 
 	public void onSendOut()
 	{
-		
+		if(ability != null)
+			ability.onSendOut();
 	}
 	
 	public void onFaint()
 	{
-		
+		if(ability != null)
+			ability.onFaint();	
 	}
 	
 	public void onWithdraw()
 	{
-		
+		if(ability != null)
+			ability.onWithdraw();
 	}
 	
 	public double getSTAB()
@@ -127,8 +135,9 @@ public class Ability {
 	
 	public void setUser(Pokemon u)
 	{
-		System.out.println("Calling ability set user method!");
 		user = u;
+		if(ability != null)
+			ability.setUser(u);
 	}
 
 	/**
@@ -151,12 +160,9 @@ public class Ability {
 		abilityDex.put("cloud nine", new AbilityRemoveWeather());
 		abilityDex.put("levitate", new AbilityLevitate());
 		abilityDex.put("flash fire", new AbilityFlashFire());
+		abilityDex.put("drought", new AbilityDrought());
 	}
-	/*public double getModifier()
-	{
-		return powerBoost;
-	}
-	
+	/*
 	{
 		"analytic": {
 			shortDesc: "This Pokemon's attacks do 1.3x damage if it is the last to move in a turn.",
@@ -419,14 +425,7 @@ public class Ability {
 			},
 			rating = 5,
 		},
-		"drought": {
-			shortDesc: "On switch-in, this Pokemon summons Sunny Day until another weather replaces it.",
-			onStart: function(user) {
-				this.setWeather('sunnyday');
-				this.weatherData.duration = 0;
-			},
-			rating = 5,
-		},
+		"drought"
 		"dryskin": {
 			shortDesc: "This Pokemon is healed 1/4 by Water, 1/8 by Rain; is hurt 1.25x by Fire, 1/8 by Sun.",
 			onImmunity: function(type, pokemon) {
@@ -492,28 +491,6 @@ public class Ability {
 			onModifyStats: function(stats, pokemon) {
 				if (pokemon.status === 'brn') {
 					stats.spa *= 1.5;
-				}
-			},
-			rating = 3,
-		},
-		"flashfire": {
-			shortDesc: "This Pokemon's Fire attacks do 1.5x damage if hit by one Fire move; Fire immunity.",
-			onImmunity: function(type, pokemon) {
-				if (type === 'Fire') {
-					pokemon.addVolatile('flashfire');
-					return null;
-				}
-			},
-			effect: {
-				noCopy: true, // doesn't get copied by Baton Pass
-				onStart: function(target) {
-					this.add('-start',target,'ability: Flash Fire');
-				},
-				onBasePower: function(basePower, attacker, defender, move) {
-					if (move.type === 'Fire') {
-						this.debug('Flash Fire boost');
-						return basePower * 1.5;
-					}
 				}
 			},
 			rating = 3,
@@ -857,13 +834,6 @@ public class Ability {
 				}
 			},
 			rating = 3,
-		},
-		"levitate": {
-			shortDesc: "This Pokemon is immune to Ground; Gravity, Ingrain, Smack Down, Iron Ball cancel it.",
-			onImmunity: function(type) {
-				if (type === 'Ground') return false;
-			},
-			rating = 3.5,
 		},
 		"lightmetal": {
 			shortDesc: "This Pokemon's weight is halved.",
