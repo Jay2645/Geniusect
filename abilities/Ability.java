@@ -122,6 +122,12 @@ public class Ability {
 			ability.onFaint();	
 	}
 	
+	public void onNewTurn()
+	{
+		if(ability != null)
+			ability.onNewTurn();
+	}
+	
 	public void onWithdraw()
 	{
 		if(ability != null)
@@ -158,6 +164,7 @@ public class Ability {
 		abilityDex.put("aftermath", new AbilityAftermath());
 		abilityDex.put("airlock", new AbilityRemoveWeather());
 		abilityDex.put("cloud nine", new AbilityRemoveWeather());
+		abilityDex.put("chlorophyll", new AbilityChlorophyll());
 		abilityDex.put("levitate", new AbilityLevitate());
 		abilityDex.put("flash fire", new AbilityFlashFire());
 		abilityDex.put("drought", new AbilityDrought());
@@ -250,15 +257,6 @@ public class Ability {
 			},
 			rating = 2,
 		},
-		"chlorophyll": {
-			shortDesc: "If Sunny Day is active, this Pokemon's Speed is doubled.",
-			onModifyStats: function(stats) {
-				if (this.weather === 'sunnyday') {
-					stats.spe *= 2;
-				}
-			},
-			rating = 3.5,
-		},
 		"clearbody": {
 			shortDesc: "Prevents other Pokemon from lowering this Pokemon's stat stages.",
 			onBoost: function(boost, target, user) {
@@ -271,13 +269,6 @@ public class Ability {
 				}
 			},
 			rating = 2,
-		},
-		"cloudnine": {
-			shortDesc: "While this Pokemon is active, all weather conditions and their effects are disabled.",
-			onAnyModifyPokemon: function(pokemon) {
-				pokemon.ignore['WeatherTarget'] = true;
-			},
-			rating = 3,
 		},
 		"colorchange": {
 			shortDesc: "This Pokemon's type changes to match the type of the last move that hit it.",
