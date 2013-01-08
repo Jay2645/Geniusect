@@ -17,6 +17,7 @@ public class HiddenPower extends Move {
 		accuracy = 100;
 		target = Target.Normal;
 		moveType = MoveType.Special;
+		power = 70;
 		boostChance = 0;
 		recoilPercent = 0;
 		disabled = clone.disabled;
@@ -28,6 +29,16 @@ public class HiddenPower extends Move {
 	public List<Type> strengths; //What we know this is super-effective against.
 	
 	public List<Type> possible;
+	
+	public void setType(Type t)
+	{
+		type = t;
+	}
+	
+	public void setPower(int p)
+	{
+		power = p;
+	}
 	
 	public void addResist(Type t)
 	{

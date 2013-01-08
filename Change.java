@@ -28,17 +28,17 @@ public class Change extends Action {
 		System.err.println(switchTo.getTeam().getUsername()+" (TeamID "+switchTo.getTeam().getTeamID()+"): Go, "+switchTo.getName()+"!");
 		sent = true;
 		ShowdownHelper showdown = battle.getShowdown();
-		if(!sayOnSend.equals(""))
-		{
-			GeniusectAI.print(sayOnSend);
-			sayOnSend = "";
-		}
 		if(showdown == null || GeniusectAI.isSimulating())
 		{
 			switchTo.onSendOut();
 		}
-		else if(showdown != null)
+		else
 		{
+			if(!sayOnSend.equals(""))
+			{
+				GeniusectAI.print(sayOnSend);
+				sayOnSend = "";
+			}
 			try
 			{
 				showdown.switchTo(switchTo.getName(), false);
@@ -47,11 +47,7 @@ public class Change extends Action {
 			{
 				System.err.println("Could not switch to "+switchTo.getName()+"! Exception data:\n"+e);
 				GeniusectAI.print("Exception! Could not switch to "+switchTo.getName()+"!");
-				Action a = onException(this, e, battle);
-				if(a instanceof Attack)
-					((Attack) a).deploy();
-				else if(a instanceof Change)
-					((Change) a).deploy();
+				onException(this, e, battle);
 			}
 		}
 		switchTo.onSendOut();
@@ -70,6 +66,7 @@ public class Change extends Action {
 		//Returns the best response to a threat.
 		int damage = Integer.MAX_VALUE;
 		Pokemon switcher = null;
+		double damageMult = 64;
 		for(int i = 0; i < ourTeam.length; i++)
 		{
 			if(ourTeam[i] == null)
@@ -81,13 +78,24 @@ public class Change extends Action {
 			}
 			if(ourTeam[i].isAlive())
 			{
+				double ourDamageMult = 	Pokequations.damageMultiplier(enemy.getType(0), ourTeam[i].getTypes())
+										*Pokequations.damageMultiplier(enemy.getType(1), ourTeam[i].getTypes());
 				if(switcher == null)
+				{
 					switcher = ourTeam[i]; //Make sure we will always return something if at least one Pokemon is alive.
+					damageMult = ourDamageMult;
+				}
+				if(ourDamageMult < damageMult)
+				{
+					switcher = ourTeam[i];
+					damageMult = ourDamageMult;
+				}
 				Move theirBestMove = Pokequations.bestMove(enemy,ourTeam[i]);
 				if(damage > theirBestMove.getProjectedPercent(ourTeam[i]).y)
 				{
 					damage = theirBestMove.getProjectedPercent(ourTeam[i]).y;
 					switcher = ourTeam[i];
+					damageMult = ourDamageMult;
 				}
 			}
 		}

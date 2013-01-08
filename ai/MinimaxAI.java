@@ -28,7 +28,8 @@ public class MinimaxAI {
 	{
 		battle = b;
 		depth *=2;
-		MinimaxNode decide = scoreTree(depth);
+		MinimaxNode decide = new MinimaxNode(battle, depth);
+		scoreTree(decide,depth);
 		minimaxAlgorithm(decide, depth);
 		Action decision;
 		if(decide.getDecision() == null)
@@ -41,19 +42,6 @@ public class MinimaxAI {
 		GeniusectAI.markDecision(decision);
 		return decision;
 	}
-	/**
-	 * Initializes and scores a minimax tree.
-	 * @param depth - How many branches to iterate down (increases exponentially).
-	 * @return MinimaxNode - The parent node of the entire tree.
-	 * @see geniusect.ai.MinimaxAI#minimax(int)
-	 * @see	{@link http://en.wikipedia.org/wiki/Minimax}
-	 */
-	private static MinimaxNode scoreTree(int depth)
-	{
-		MinimaxNode node = new MinimaxNode(battle, depth);
-		scoreTree(node,depth);
-		return node;
-	}
 	
 	/**
 	 * Scores a minimax branch.
@@ -65,7 +53,60 @@ public class MinimaxAI {
 	 * @see geniusect.ai.MinimaxAI#score(MinimaxNode)
 	 * @see	{@link http://en.wikipedia.org/wiki/Minimax}
 	 */
-	private static MinimaxNode scoreTree(MinimaxNode node, int depth)
+	private static void scoreTree(MinimaxNode node, int depth)
+	{
+		Pokemon ourActive = new Pokemon(node.getOurPokemon());
+		Pokemon enemyActive = new Pokemon(node.getEnemyPokemon());
+		Pokemon[] ourTeam = node.getOurTeam();
+		Battle nodeBattle = node.getBattle();
+		if(depth <= 0 || enemyActive == null)
+		{
+			System.out.println("Collecting children.");
+			MinimaxNode[] finalChildren = node.getChildren();
+			if(finalChildren == null)
+				score(node);
+			else
+			{
+				for(int i = 0; i < finalChildren.length; i++)
+					scoreTree(finalChildren[i],depth - 1);
+				//return node;
+			}
+			return;
+		}
+		Move[] ourMoves = ourActive.getMoveset();
+		System.out.println("Node generation: "+node.getCount()+"; iterations to go: "+depth);
+		System.out.println(	"Player "+node.getPlayer() + " is using "+ourActive.getName() +
+							" ("+ourActive.getHealth()+" hp).");
+		nodeBattle.newTurn(ourActive.getTeam());
+		for(int i = 0; i < 4; i++)
+		{
+			if(ourMoves[i] == null || ourMoves[i].disabled || ourMoves[i].pp <= 0)
+				continue;
+			MinimaxNode child = new MinimaxNode(node);
+			child.setDecision(new Attack(ourMoves[i],new Pokemon(ourActive),new Pokemon(enemyActive),nodeBattle));
+			//System.out.println("Using "+ourMoves[i].name);
+		}
+		for(int i = 0; i < 6; i++)
+		{
+			if(ourTeam[i] == null || ourTeam[i].nameIs(ourActive.getName()) || !ourTeam[i].isAlive())
+				continue;
+			MinimaxNode child = new MinimaxNode(node);
+			child.setDecision(new Change(ourTeam[i], nodeBattle));
+			//System.out.println("Swtiching to "+ourTeam[i].getName());
+		}
+		MinimaxNode[] children = node.getChildren();
+		//if(children == null)
+			//return score(node);
+		for(int i = 0; i < children.length; i++)
+		{
+			if(children[i].getDecision() == null || ourActive.nameIs(children[i].getDecisionName()))
+				continue;
+			System.out.println(ourActive.getName()+" is going recursive with "+children[i].getDecisionName()+". Count "+i+" of "+children.length);
+			scoreTree(children[i], depth - 1);
+		}
+		//return node;
+	}
+	/*private static MinimaxNode scoreTree(MinimaxNode node, int depth)
 	{
 		Pokemon ourActive = node.getOurPokemon();
 		Pokemon enemyActive = node.getEnemyPokemon();
@@ -113,7 +154,7 @@ public class MinimaxAI {
 			node.getDecision();
 		}
 		return node;
-	}
+	}*/
 	
 	/**
 	 * Finds the best move we can use or Pokemon we can switch to using and returns the Action.
@@ -123,12 +164,18 @@ public class MinimaxAI {
 	 * @see geniusect.ai.MinimaxAI#scoreTree(MinimaxNode, int)
 	 * @see	{@link http://en.wikipedia.org/wiki/Minimax}
 	 */
-	protected static MinimaxNode score(MinimaxNode node, Action decision)
+	protected static MinimaxNode score(MinimaxNode node)
 	{
 		node.endIterations();
 		int damageDoneToEnemy = node.getDamageDoneEnemy();
 		int damageDoneToUs = node.getDamageDoneUs();
 		int score = damageDoneToEnemy - damageDoneToUs - node.getCount();
+		Action decision = node.getDecision();
+		if(decision == null)
+		{
+			System.err.println(node.getOurName()+"'s action at count "+node.getCount()+" is null!");
+			return null;
+		}
 		System.out.println("Branch: "+decision.name+".");
 		System.out.println("This branch did "+damageDoneToEnemy+" damage to our enemy ("+node.getEnemyName()+") in "+node.getCount()+" turns.");
 		System.out.println(node.getEnemyName()+" did "+damageDoneToUs+" damage to us ("+node.getOurName()+")."); 
@@ -146,7 +193,7 @@ public class MinimaxAI {
 	 */
 	private static Action minimaxAlgorithm(MinimaxNode node, int depth)
 	{
-		if(node.getIsRoot())
+		if(node.getIsRoot() || node.getParent() == null)
 		{
 			MinimaxNode result = node.getResult();
 			if(result == null)
@@ -205,10 +252,12 @@ public class MinimaxAI {
 		for(int i = 0; i < children.length; i++)
 		{
 			Action miniResult = minimaxAlgorithm(children[i], depth - 1);
+			if(miniResult == null)
+				continue;
 			int miniScore = -miniResult.score;
 			if(miniScore > alpha)
 			{
-				System.out.println(children[i].getDecision().name+" has a score of "+miniResult+", to be achieved in "+node.getCount()+" turns.");
+				System.out.println(children[i].getDecision().name+" has a score of "+miniScore+", to be achieved in "+node.getCount()+" turns.");
 				decision = miniResult;
 				node.setResult(children[i]);
 				alpha = miniScore;

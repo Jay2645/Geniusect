@@ -341,6 +341,7 @@ public class Pokequations {
 				System.err.println(attacker.getName()+"'s move "+moveset[i]+" is null or disabled!");
 				continue;
 			}
+			System.out.println(moveset[i].name);
 			if(use == null)
 			{
 				use = moveset[i];
@@ -360,6 +361,7 @@ public class Pokequations {
 		}
 		if(use == null)
 		{
+			System.err.println(attacker.getName()+" could not find move to use, using Struggle.");
 			use = new Move("Struggle", attacker);
 		}
 		return use;

@@ -25,6 +25,7 @@ public class Attack extends Action {
 		if(attacker.getLockedInto() != null)
 		{
 			move = attacker.getLockedInto();
+			System.err.println(attacker.getName()+" is locked into "+move.name+"!");
 			name = move.name;
 			return;
 		}
@@ -64,11 +65,6 @@ public class Attack extends Action {
 		ShowdownHelper showdown = battle.getShowdown();
 		System.err.println(attacker.getName()+" used "+move.name+"!");
 		sent = true;
-		if(!sayOnSend.equals(""))
-		{
-			GeniusectAI.print(sayOnSend);
-			sayOnSend = "";
-		}
 		if(showdown == null || GeniusectAI.isSimulating())
 		{
 			if(!attacker.isAlive()) //We can only attack if we're alive.
@@ -80,8 +76,13 @@ public class Attack extends Action {
 				System.err.println("Damage done: "+damage+"%");
 			return damage;
 		}
-		else if(showdown != null)
+		else
 		{
+			if(!sayOnSend.equals(""))
+			{
+				GeniusectAI.print(sayOnSend);
+				sayOnSend = "";
+			}
 			try
 			{
 				showdown.doMove(move.name);
@@ -90,11 +91,7 @@ public class Attack extends Action {
 			{
 				System.err.println(attacker.getName()+" could not do move "+move.name+"! Exception data:\n"+e);
 				GeniusectAI.print("Exception! "+attacker.getName()+" could not do move "+move.name+"!");
-				Action a = onException(this, e, battle);
-				if(a instanceof Attack)
-					((Attack) a).deploy();
-				else if(a instanceof Change)
-					((Change) a).deploy();
+				onException(this, e, battle);
 			}
 		}
 		return 0;

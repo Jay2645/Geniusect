@@ -54,20 +54,18 @@ public class Action
 	 * Sets a child's enemy Pokemon or adds the damage done by this Action to the child.
 	 * @param node (MinimaxNode): The child node.
 	 */
-	public void sendToShowdown(MinimaxNode node)
+	public int sendToShowdown(MinimaxNode node)
 	{
 		if(this instanceof Change)
 		{
 			Change c = (Change)this;
-			node.setEnemyPokemon(c.switchTo);
 			c.deploy();
+			return Change.calculateSwitchDamagePercent(c.switchTo);
 		}
-		else if(this instanceof Attack)
+		else
 		{
-			changeCount = 0;
 			Attack a = (Attack) this;
-			a.defender = node.getOurPokemon();
-			node.addDamageDoneUs(a.deploy());
+			return a.deploy();
 		}
 	}
 	
@@ -119,7 +117,10 @@ public class Action
 				}
 			}
 			else if (nextTurn == TurnEndStatus.WON)
+			{
+				b.getTeam(0).getActive().ragequits++;
 				b.gameOver(true);
+			}
 			else if (nextTurn == TurnEndStatus.LOST)
 				b.gameOver(false);
 		}
@@ -283,10 +284,8 @@ public class Action
 	protected boolean findPokemon(String text)
 	{	//Takes a string of the last turn's events, finds any Pokemon that were sent out, and marks them as active.
 		boolean switched = false;
-		String[] owner = new String[2];
 		String[] pokemon = new String[2];
-		owner[0] = battle.getTeam(0).getUsername();
-		owner[1] = battle.getTeam(1).getUsername();
+		ShowdownHelper showdown = battle.getShowdown();
 		Pattern faintP = Pattern.compile("(.+) fainted!", Pattern.MULTILINE);
 		Matcher faintM = faintP.matcher(text);
 		while(faintM.find())
@@ -303,39 +302,16 @@ public class Action
 			Pokemon poke = t.getPokemon(faint);
 			if(poke == null)
 				System.err.println("Could not find Pokemon "+faint);
-			poke.onDie();
+			else
+				poke.onDie();
 		}
-		for(int i = 0; i < owner.length; i++)
+		pokemon[0] = showdown.getCurrentPokemon(true);
+		pokemon[1] = showdown.getCurrentOpponentPokemon(true);
+		for(int i = 0; i < pokemon.length; i++)
 		{
-			if(owner[i].equals(""))
-				continue;
-			Pattern p = Pattern.compile(owner[i]+" sent out (.+)!", Pattern.MULTILINE);
-			Matcher m = p.matcher(text);
-			if(m.find())
-			{
-				String tempname = text.substring(m.start(1), m.end(1));
-				if(tempname.contains("("))
-				{
-					String f = "";
-					Pattern nameP = Pattern.compile(" \\((.+?)\\)");
-					Matcher nameM = nameP.matcher(tempname);
-					nameM.find();
-					if (nameM.end(1) - nameM.start(1) > 1)
-					{
-						f = nameM.group(1);
-					}
-					else
-					{
-						f = tempname.substring(0, nameM.start(1) - 2);
-					}
-					tempname = f;
-				}
-				System.err.println(tempname);
-				pokemon[i] = tempname;
-			}
 			if(pokemon[i] != null)
 			{
-				Pokemon poke = battle.getTeam(i).addPokemon(pokemon[i], battle.getShowdown()); //Not getPokemon because we don't know if we've seen it yet.
+				Pokemon poke = battle.getTeam(i).addPokemon(pokemon[i], showdown); //Not getPokemon because we don't know if we've seen it yet.
 				poke.onSendOut();
 				switched = true;
 			}
@@ -343,7 +319,7 @@ public class Action
 		return switched;
 	}
 	
-	protected static Action onException(Action failure, Exception e, Battle battle)
+	protected static void onException(Action failure, Exception e, Battle battle)
 	{
 		//Called if everything breaks.
 		ShowdownHelper showdown = battle.getShowdown();
@@ -364,7 +340,7 @@ public class Action
 				showdown.leaveBattle();
 			battle.isPlaying(false);
 			GeniusectAI.setBattle(null);
-			return null;
+			return;
 		}
 		GeniusectAI.print("Attempting to rectify: attempt number "+failure.attempt+" / 4");
 		if(showdown != null)
@@ -394,6 +370,6 @@ public class Action
 			a = new Change(p, battle);
 		}
 		a.attempt = failure.attempt + 1;
-		return a;
+		a.sendToShowdown(battle);
 	}
 }

@@ -73,6 +73,7 @@ public class SQLHandler {
 						", Move Type: "+m.getType() +
 						", Accuracy: " + m.accuracy +
 						", Target: " + m.target +
+						", Priority: " + m.priority +
 						", PP: " + m.pp);
 					++count;
 				}

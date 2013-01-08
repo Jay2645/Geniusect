@@ -42,6 +42,15 @@ public class Battle {
 	 * @see #showdown
 	 */
 	private String importableUs =	"Team Name: The Jungle" +
+									"\nDonphan @ Leftovers" +
+									"\nTrait: Sturdy" +
+									"\nEVs: 252 SDef / 28 HP / 228 Def" +
+									"\nCareful Nature" +
+									"\n- Rapid Spin" +
+									"\n- Ice Shard" +
+									"\n- Stealth Rock" +
+									"\n- Earthquake" +
+									"\n"+
 									"\nNinetales @ Leftovers" +
 									"\nTrait: Drought" +
 									"\nEVs: 252 HP / 252 SAtk / 4 SDef" +
@@ -57,7 +66,7 @@ public class Battle {
 									"\nNaive Nature" +
 									"\n- Growth" +
 									"\n- Power Whip" +
-									"\n- Hidden Power" +
+									"\n- Hidden Power [Ice]" +
 									"\n- Earthquake" +
 									"\n" +
 									"\nDugtrio @ Focus Sash" +
@@ -76,7 +85,7 @@ public class Battle {
 									"\n- Overheat" +
 									"\n- SolarBeam" +
 									"\n- Earth Power" +
-									"\n- Hidden Power" +
+									"\n- Hidden Power [Ice]" +
 									"\n" +
 									"\nDragonite @ Lum Berry" +
 									"\nTrait: Multiscale" +
@@ -85,16 +94,7 @@ public class Battle {
 									"\n- Dragon Dance" +
 									"\n- Fire Punch" +
 									"\n- ExtremeSpeed" +
-									"\n- Outrage" +
-									"\n" +
-									"\nDonphan @ Leftovers" +
-									"\nTrait: Sturdy" +
-									"\nEVs: 252 SDef / 28 HP / 228 Def" +
-									"\nCareful Nature" +
-									"\n- Rapid Spin" +
-									"\n- Toxic" +
-									"\n- Stealth Rock" +
-									"\n- Earthquake";
+									"\n- Outrage";
 	
 			
 	private String importableEnemy =	"Team Name: Phagocyte" +
@@ -113,7 +113,7 @@ public class Battle {
 										"\nTimid Nature" +
 										"\n- Overheat" +
 										"\n- Earth Power" +
-										"\n- Hidden Power" +
+										"\n- Hidden Power [Ice]" +
 										"\n- Dark Pulse" +
 										"\n" +
 										"\nLatios @ Choice Specs" +
@@ -153,7 +153,7 @@ public class Battle {
 										"\n- Mach Punch";
 
 	private Team players[] = new Team[2];
-	private int turnsToSimulate = 4500; //How many turns we simulate, if Showdown is not running?
+	private int turnsToSimulate = 150; //How many turns we simulate, if Showdown is not running?
 	private int turnCount = 1; //The current turn.
 	private boolean playing = false; // TRUE if we have found a battle.
 	private boolean firstTurn = true; // TRUE if it is the first turn.
@@ -236,7 +236,6 @@ public class Battle {
 			{
 				players[i].setUserName(userName[i]);
 				List<String> ourPokes= showdown.getTeam(userName[i]);
-				//TODO: Get moves for each Pokemon, if known.
 				for(int n = 0; n < ourPokes.size(); n++)
 				{
 					System.out.println(ourPokes.get(n)+", "+userName[i]);
@@ -270,8 +269,10 @@ public class Battle {
 			turnCount = showdown.getCurrentTurn();
 			turnNumber = turnCount;
 		}
-		
-		System.err.println("\n\n\n*******************************TEAM "+t.getTeamID()+", TURN "+(turnNumber)+"*******************************");
+		System.out.println("\n\n\n");
+		if(GeniusectAI.isSimulating())
+			System.err.println("***********************************SIMULATED***********************************");
+		System.err.println("*******************************TEAM "+t.getTeamID()+", TURN "+(turnNumber)+"*******************************");
 		System.err.println("**************************ACTIVE POKEMON: "+t.getActive().getName()+"**************************");
 		System.err.println(criticalErrors);
 		//if(GeniusectAI.showdown != null && turnCount % 5 == 0)
@@ -415,6 +416,8 @@ public class Battle {
 		lastTurnUs = clone.lastTurnUs;
 		nextTurn = clone.nextTurn;
 		players = clone.players;
+		//players[0] = new Team(clone.players[0]);
+		//players[1] = new Team(clone.players[1]);
 		playing = clone.playing;
 		turnCount = clone.turnCount;
 		turnsToSimulate = clone.turnsToSimulate;
@@ -448,6 +451,15 @@ public class Battle {
 	private void updateTeamActive(Team team, Pokemon active) 
 	{
 		team.updateEnemy(active);
+	}
+
+	/**
+	 * Changes this battle's turn count.
+	 * @param i (int): The number to set it to.
+	 */
+	public void setTurnCount(int i) 
+	{
+		turnCount = i;
 	}
 
 }

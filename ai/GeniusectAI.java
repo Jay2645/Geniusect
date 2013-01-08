@@ -8,6 +8,7 @@ import geniusect.Change;
 import geniusect.Move;
 import geniusect.Pokemon;
 import geniusect.Pokequations;
+import geniusect.Stat;
 import geniusect.Team;
 import geniusect.Type;
 import geniusect.abilities.Ability;
@@ -228,64 +229,20 @@ public class GeniusectAI {
 					a.defenderSwap(c.switchTo);
 				}
 			}
-			if(	Team.getEnemyTeam(enemyID).getActive().isFasterThan(Team.getEnemyTeam(teamID).getActive()) || //Check who is faster OR
+			if(	Team.getEnemyTeam(enemyID).getActive().isFasterThan(Team.getEnemyTeam(teamID).getActive()) && //Check who is faster
 				lastTurnEnemy instanceof Attack && nextTurn instanceof Attack && 
-				((Attack)nextTurn).move.priority > ((Attack)lastTurnEnemy).move.priority) //Check if we have priority.
-			{	//Things won't send if they've already been sent, so we don't need to check if we've already sent it.
+				((Attack)nextTurn).move.priority >= ((Attack)lastTurnEnemy).move.priority) //Check if we have priority.
+			{
 				nextTurn.sendToShowdown(b);
 				lastTurnEnemy.sendToShowdown(b);
 			}
 			else
-			{
+			{	//Things won't send if they've already been sent, so we don't need to check if we've already sent it.
 				lastTurnEnemy.sendToShowdown(b);
 				nextTurn.sendToShowdown(b);
 			}
 		}
 		GeniusectAI.swapSides();
-	}
-	/**
-	 * Simulates a turn in the battle.
-	 * @param b (Battle) - The battle to simulate.
-	 */
-	public static void simulateTurn(MinimaxNode node)
-	{
-		Battle b = node.getBattle();
-		int turnCount = b.getTurnCount();
-		Action nextTurn = b.getNextTurn();
-		Action lastTurnEnemy = b.getLastTurnEnemy();
-		if(turnCount % 2 == 0)
-		{
-			if(nextTurn instanceof Change) //Always change first.
-			{
-				Change c = (Change)nextTurn;
-				c.sendToShowdown(node);
-				if(lastTurnEnemy instanceof Attack)
-				{
-					Attack a = (Attack)lastTurnEnemy;
-					a.defenderSwap(c.switchTo);
-				}
-			}
-			if(lastTurnEnemy instanceof Change)
-			{
-				Change c = (Change)lastTurnEnemy;
-				c.sendToShowdown(node);
-				if(nextTurn instanceof Attack)
-				{
-					Attack a = (Attack)nextTurn;
-					a.defenderSwap(c.switchTo);
-				}
-			}
-			if(Team.getEnemyTeam(enemyID).getActive().isFasterThan(Team.getEnemyTeam(teamID).getActive())) //Check who is faster.
-			{	//Things won't send if they've already been sent, so we don't need to check if we've already sent it.
-				nextTurn.sendToShowdown(node);
-				lastTurnEnemy.sendToShowdown(node);
-			}
-			else
-			{
-				lastTurnEnemy.sendToShowdown(node);
-				nextTurn.sendToShowdown(node);
-			}
-		}
 	}
 	
 	/**
@@ -345,6 +302,22 @@ public class GeniusectAI {
 	{
 		if(simulating)
 			return;
+		Pokemon[] playerTeam = battle.getTeam(0).getPokemon();
+		Pokemon[] enemyTeam = battle.getTeam(1).getPokemon();
+		System.err.println("\nPlayer bodycount:");
+		for(int i = 0; i < 6; i++)
+		{
+			if(playerTeam[i] == null)
+				continue;
+			playerTeam[i].printKills();
+		}
+		System.err.println("\nOpponent bodycount:");
+		for(int i = 0; i < 6; i++)
+		{
+			if(enemyTeam[i] == null)
+				continue;
+			enemyTeam[i].printKills();
+		}
 		battle = null;
 		if(won)
 		{
@@ -372,15 +345,31 @@ public class GeniusectAI {
 		if(decision instanceof Attack)
 		{
 			Move bestMoveUs = ((Attack) decision).move;
+			Pokemon ourActive = us.getActive();
+			if(ourActive == null)
+			{
+				Pokemon actualActive = us.getPokemon(((Attack) decision).attacker.getID());
+				us.setActive(actualActive);
+				ourActive = us.getActive();
+			}
+			Pokemon enemyActive = enemy.getActive();
+			if(enemyActive == null)
+			{
+				Pokemon actualActive = enemy.getPokemon(((Attack) decision).defender.getID());
+				enemy.setActive(actualActive);
+				enemyActive = enemy.getActive();
+			}
 			ourBestMove = bestMoveUs;
-			System.out.println("We are going to try to use "+bestMoveUs.name);
-			Move bestMoveThem = Pokequations.bestMove(us.getActive(), enemy.getActive(), ourBestMove);
+			System.out.println("We are going to try to use "+bestMoveUs.name+ " ("+bestMoveUs.power+" BP, "+bestMoveUs.type+", "+bestMoveUs.moveType+").");
+			System.out.println("Enemy Speed: "+enemyActive.boostedStat(Stat.Spe));
+			System.out.println("Our Speed: "+ourActive.boostedStat(Stat.Spe));
+			Move bestMoveThem = Pokequations.bestMove(ourActive, enemyActive, ourBestMove);
 			theirBestMove = bestMoveThem;
 			if(bestMoveThem == null)
 				turnsToKillUs++;
 			else
-				turnsToKillUs = Pokequations.turnsToKill(us.getActive().getHealth(), theirBestMove.getProjectedPercent(us.getActive()).y + ourBestMove.recoilPercent);
-			turnsToKillThem = Pokequations.turnsToKill(enemy.getActive().getHealth(), ourBestMove.getProjectedPercent(enemy.getActive()).x + theirBestMove.recoilPercent);
+				turnsToKillUs = Pokequations.turnsToKill(ourActive.getHealth(), theirBestMove.getProjectedPercent(ourActive).y + ourBestMove.recoilPercent);
+			turnsToKillThem = Pokequations.turnsToKill(enemyActive.getHealth(), ourBestMove.getProjectedPercent(enemyActive).x + theirBestMove.recoilPercent);
 		}
 	}
 	
@@ -504,6 +493,8 @@ public class GeniusectAI {
 	public static void print(String text)
 	{
 		//Text to send to Showdown.
+		if(simulating)
+			return;
 		//System.err.println("Sending text to chat.");
 		//if(showdown == null)
 			System.out.println("BATTLE CHAT: "+text);

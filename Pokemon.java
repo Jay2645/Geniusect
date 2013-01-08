@@ -57,6 +57,8 @@ public class Pokemon {
 	protected Pokemon enemy;
 	protected Team enemyTeam;
 	protected int damageDoneLastTurn;
+	public int ragequits = 0;
+	protected ArrayList<String> killNames = new ArrayList<String>();
 	
 	protected ShowdownHelper showdown;
 	
@@ -71,7 +73,9 @@ public class Pokemon {
 	{
 		name = n;
 		team = t;
+		nickName = nick;
 		enemyTeam = Team.getEnemyTeam(team.getTeamID());
+		showdown = team.getShowdown();
 		query();
 	}
 	
@@ -90,6 +94,14 @@ public class Pokemon {
 		}
 		else if(team == null)
 			team = enemy.enemyTeam;
+		if(team.getTeamID() == 0 && showdown != null)
+		{
+			List<String> ourMoves = showdown.getMoves(name);
+			for(int m = 0; m < ourMoves.size(); m++)
+			{
+				addMove(ourMoves.get(m));
+			}
+		}
 		if(team.getActive() == null)
 			onSendOut();
 	}
@@ -107,7 +119,15 @@ public class Pokemon {
 		showdown = team.getShowdown();
 		if(ability != null)
 			ability.onSendOut();
-		getMoves();
+		if(moveset[0] == null && team.getTeamID() == 0 && showdown != null)
+		{
+			List<String> ourMoves = showdown.getMoves(name);
+			for(int m = 0; m < ourMoves.size(); m++)
+			{
+				addMove(ourMoves.get(m));
+			}
+		}
+		damage(Change.calculateSwitchDamagePercent(this));
 		wobbuffet(true);
 		status.resetActive();
 	}
@@ -120,6 +140,12 @@ public class Pokemon {
 		resetBoosts();
 		effects.clear();
 		lockedInto = null;
+		for(int i = 0; i < moveset.length; i++)
+		{
+			if(moveset[i] == null || moveset[i].pp <= 0)
+				continue;
+			moveset[i].disabled = false;
+		}
 		wobbuffet(false);
 	}
 	
@@ -131,6 +157,7 @@ public class Pokemon {
 			ability.onFaint();
 		System.err.println(name+" has died!");
 		alive = false;
+		enemy.onKill(name);
 		if(!active)
 			onWithdraw();
 		if(showdown != null && team.getTeamID() == 1)
@@ -141,24 +168,9 @@ public class Pokemon {
 		else return change.switchTo;
 	}
 	
-	public void getMoves()
+	public void onKill(String enemyName)
 	{
-		showdown = team.getShowdown();
-		if(team.getTeamID() == 0 && showdown != null)
-		{
-			try
-			{
-				List<String> moves = showdown.getMoves();
-				for(int i = 0; i < moves.size(); i++)
-				{
-					addMove(moves.get(i));
-				}
-			}
-			catch(Exception e)
-			{
-				System.out.println("Could not find "+name+"'s moves! Exception data:\n"+e);
-			}
-		}
+		killNames.add(enemyName);
 	}
 	
 	public int onNewAttack(Damage damage)
@@ -189,6 +201,8 @@ public class Pokemon {
 		Move moveUsed = addMove(n);
 		if(moveUsed != null)
 			moveUsed.onMoveUsed(enemy, damageDone, crit);
+		if(ability != null)
+			ability.onNewTurn();
 		status.onNewTurn();
 	}
 	
@@ -289,6 +303,17 @@ public class Pokemon {
 		return hpPercent;
 	}
 	
+	public void printKills()
+	{
+		if(killNames.isEmpty())
+			return;
+		System.out.println(name+" kills:");
+		for(int i = 0; i < killNames.size(); i++)
+		{
+			System.err.println(killNames.get(i));
+		}
+	}
+	
 	/**
 	 * Adds the move to the moveset. If the moveset is full, returns null. If the move is already in the moveset, returns that move.
 	 * @param moveName (String): The name of the move we're trying to add.
@@ -319,18 +344,19 @@ public class Pokemon {
 				moveset[i] = new Move(moveName,this);
 				if(moveName.toLowerCase().startsWith("hidden power"))
 				{
-					moveset[i] = new HiddenPower(moveset[i]); 
-					if(team != null && team.getTeamID() == 0 && showdown != null)
+					HiddenPower hp = new HiddenPower(moveset[i]); 
+					if(moveset[i].type == null)
 					{
-						List<String> hpType = showdown.getMoves();//Will need to be changed later.
-						for(int r = 0; r < hpType.size(); r++)
+						if(team != null && team.getTeamID() == 0 && showdown != null)
 						{
-							if(hpType.get(r).toLowerCase().startsWith("hidden power"))
-							{
-								System.err.println(hpType.get(r));
-							}
+							//TODO: Get HP type from Showdown.
 						}
 					}
+					else
+					{
+						hp.setType(moveset[i].type);
+					}
+					moveset[i] = hp;
 				}
 				move = moveset[i];
 			}
@@ -457,10 +483,13 @@ public class Pokemon {
 	
 	/**
 	 * Returns all the moves in our moveset.
+	 * If we have no moves in our moveset, returns an empty array.
 	 * @return Move[] - The moves in our moveset.
 	 */
 	public Move[] getMoveset()
 	{
+		if(moveset[0] == null)
+			return new Move[0];
 		return moveset;
 	}
 	
@@ -775,7 +804,7 @@ public class Pokemon {
 	
 	public Pokemon clone(Pokemon clone)
 	{
-		System.out.println("Cloning "+clone.name);
+		System.out.println("Cloning "+clone.name+" ("+clone.hpPercent+" HP).");
 		name = clone.name;
 		id = clone.id;
 		item = clone.item;
@@ -889,6 +918,12 @@ public class Pokemon {
 		while (m.find())
 		{
 			moves[i] = importable.substring(m.start(1), m.end(1));
+			Pattern hpP = Pattern.compile("Hidden Power \\[(.+)\\]");
+			Matcher hpM = hpP.matcher(moves[i]);
+			if(hpM.find())
+			{
+				moves[i] = "Hidden Power "+hpM.group(1);
+			}
 			found.addMove(moves[i]);
 			i++;
 		}
@@ -940,5 +975,25 @@ public class Pokemon {
 	public int getBoosts(Stat stat) 
 	{
 		return boosts[stat.toInt()];
+	}
+
+	/**
+	 * Sets a Stat to a different number.
+	 * @param stat (Stat): The stat to change.
+	 * @param newStat (int): The number to change it to.
+	 */
+	public void setStat(Stat stat, int newStat) 
+	{
+		stats[stat.toInt()] = newStat;
+		boostedStats[stat.toInt()] = Pokequations.statBoost(boosts[stat.toInt()],stats[stat.toInt()]);
+	}
+
+	/**
+	 * Sets our enemy to the specified enemy.
+	 * @param newEnemy (Pokemon): The new enemy to set it to.
+	 */
+	public void setEnemy(Pokemon newEnemy) 
+	{
+		enemy = newEnemy;
 	}
 }

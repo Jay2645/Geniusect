@@ -2,10 +2,13 @@
 
 package geniusect.ai;
 
+import java.util.ArrayList;
+
 import geniusect.Action;
 import geniusect.Attack;
 import geniusect.Battle;
 import geniusect.Change;
+import geniusect.Damage;
 import geniusect.Move;
 import geniusect.Pokemon;
 import geniusect.Pokequations;
@@ -23,7 +26,7 @@ public class MinimaxNode
 	/**The parent of this node.*/
 	private MinimaxNode parent;
 	/**The children of this node.*/
-	private MinimaxNode[] children; 
+	private ArrayList<MinimaxNode> children = new ArrayList<MinimaxNode>(); 
 	/**
 	 * The winning child of this node after Minimax calculation.
 	 * @see #children
@@ -98,6 +101,7 @@ public class MinimaxNode
 	public MinimaxNode(Battle b, int depth) 
 	{
 		battle = new Battle(b);
+		battle.setTurnCount(0);
 		ourTeam = battle.getTeam(0).getPokemon().clone();
 		enemyTeam = battle.getTeam(1).getPokemon().clone();
 		int ourID = battle.getTeam(0).getActive().getID();
@@ -122,119 +126,85 @@ public class MinimaxNode
 	protected MinimaxNode(MinimaxNode parent)
 	{
 		count = parent.count + 1;
-		if(count > depth)
+		if(parent.createChildren)
 		{
-			parent.setChildValues(this);
+			setValues(parent);
+			if(ourActive != null)
+				parent.children.add(this);
+		}
+	}
+	
+	/**
+	 * A child of a Minimax node. Automatically calls addChild() on the parent node.
+	 * @param parent - The parent of the new Node.
+	 * @see geniusect.ai.MinimaxAI
+ 	 * @see geniusect.ai.MinimaxAI#minimaxAlgorithm(MinimaxNode, int)
+ 	 * @see geniusect.ai.MinimaxNode#addChild(MinimaxNode)
+ 	 * @see	{@link http://en.wikipedia.org/wiki/Minimax}
+	 */
+	protected MinimaxNode(MinimaxNode parent, Pokemon newActive)
+	{
+		count = parent.count + 1;
+		if(parent.createChildren)
+		{
+			ourTeam = parent.enemyTeam.clone();
+			ourActive = ourTeam[newActive.getID()];
+			setValues(parent);
+			if(ourActive != null)
+				parent.children.add(this);
+		}
+	}
+	
+	/**
+	 * Sets our values to be the opposite of our parent's.
+	 * @param parent (MinimaxNode): Our parent.
+	 */
+	private void setValues(MinimaxNode parent)
+	{
+		this.parent = parent;
+		enemyTeam = parent.ourTeam.clone();
+		if(ourActive == null)
+		{
+			ourTeam = parent.enemyTeam.clone();
+			ourActive = new Pokemon(ourTeam[parent.enemyActive.getID()]);
+		}
+		enemyActive = new Pokemon(enemyTeam[parent.ourActive.getID()]);
+		/*if(ourActive == null)
+		{
 			endIterations();
-		}
-		if(createChildren && parent.parent != this)
-		{
-			this.parent = parent;
-			this.parent.addChild(this);
-		}
-	}
-	
-	/**
-	 * Adds a child to a Minimax node.
-	 * Simulates a turn's events and checks to make sure the child's Pokemon is still alive before continuing.
-	 * @param child - The child to add.
-	 */
-	private void addChild(MinimaxNode child)
-	{
-		setChildValues(child);
-		expandArray(child);
-	}
-	
-	/**
-	 * Sets the values of a child node to the values within this one.
-	 * @param child (MinimaxNode): The child to give values to.
-	 */
-	private void setChildValues(MinimaxNode child)
-	{
-		System.err.println(ourActive);
-		System.err.println(enemyActive);
-		child.enemyTeam = ourTeam.clone();
-		child.ourTeam = enemyTeam.clone();
-		child.ourActive = child.ourTeam[enemyActive.getID()];
-		child.enemyActive = child.enemyTeam[ourActive.getID()];
-		child.damageDoneToUs = damageDoneToEnemy;
-		child.damageDoneToEnemy = damageDoneToUs;
-		child.battle = battle;
-		child.battle.newTurn(child.ourActive.getTeam());
-		child.battle.setNextTurn(decision);
-		child.ourActive.getTeam().setBattle(child.battle);
-		child.enemyActive.getTeam().setBattle(child.battle);
-		child.ourActive.getAbility().setBattle(child.battle);
-		child.enemyActive.getAbility().setBattle(child.battle);
-		GeniusectAI.simulateTurn(child);
-		if(decision != null)
-		{
-			decision.sendToShowdown(child);
-			printParentRecursive(this);
-		}
-		else
-			child.enemyActive = new Pokemon(ourActive);
-		if(child.ourActive.getHealth() <= 0)
-		{
-			//This is all run if the active Pokemon has died.
-			System.err.println(child.ourActive.getName()+" has died after "+(count / 2)+" turns!");
-			Pokemon change = child.ourActive.onDie();
-			if(change == null)
-			{
-				child.createChildren = false;
-				child.damageDoneToUs = Integer.MAX_VALUE;
-				child.count = 0;
-				child.decision = new Attack(Pokequations.bestMove(child.ourActive, child.enemyActive),child.ourActive,child.enemyActive,child.battle);
-				MinimaxAI.score(child, child.decision);
-				printParentRecursive(this);
-			}
-			else
-			{
-				child.ourActive = new Pokemon(change);
-				child.decision = null;
-			}
-		}
-		else
-			System.err.println(child.ourActive.getName()+" has "+child.ourActive.getHealth()+" hp");
-	}
-	
-	/**
-	 * Expands the MinimaxNode array to fit the new child.
-	 * @param child - The child to put into the new array.
-	 */
-	private void expandArray(MinimaxNode child)
-	{
-		child.player = -player;
-		for(int i = 0; i < ourTeam.length; i++)
-		{
-			if(ourTeam[i] == null)
-				child.enemyTeam[i] = null;
-			else
-				child.enemyTeam[i] = new Pokemon(ourTeam[i]);
-			if(enemyTeam[i] == null)
-				child.ourTeam[i] = null;
-			else
-				child.ourTeam[i] = new Pokemon(enemyTeam[i]);
-		}
-		if(children == null)
-		{
-			children = new MinimaxNode[1];
-			children[0] = child;
 			return;
-		}
-		MinimaxNode[] newChild = new MinimaxNode[children.length + 1];
-		for(int i = 0; i < children.length + 1; i++)
+		}*/
+		ourActive.setEnemy(enemyActive);
+		enemyActive.setEnemy(ourActive);
+		damageDoneToUs = damageDoneToEnemy;
+		damageDoneToEnemy = damageDoneToUs;
+		battle = new Battle(parent.battle);
+		ourActive.getTeam().setBattle(battle);
+		enemyActive.getTeam().setBattle(battle);
+		ourActive.getAbility().setBattle(battle);
+		enemyActive.getAbility().setBattle(battle);
+		if(ourActive.getHealth() <= 0)
 		{
-			if(i == children.length)
+			ourActive = null;
+			for(int i = 0; i < ourTeam.length; i++)
 			{
-				newChild[i] = child;
+				if(ourTeam[i] == null || !ourTeam[i].isAlive())
+					continue;
+				if(ourActive == null)
+				{
+					ourActive = ourTeam[i];
+					continue;
+				}
+				new MinimaxNode(parent,ourTeam[i]);
 			}
-			else
+			if(ourActive == null)
 			{
-				newChild[i] = children[i];
+				parent.children.remove(this);
+				parent = null;
+				return;
 			}
 		}
-		children = newChild;
+		System.err.println(ourActive.getName()+" has "+ourActive.getHealth()+" hp");
 	}
 	
 	/**
@@ -280,15 +250,54 @@ public class MinimaxNode
 	{
 		if(action instanceof Attack)
 		{
-			usingMove = ((Attack) action).move;
+			Attack attack = (Attack) action;
+			usingMove = attack.move;
 			if(usingMove == null)
-				System.err.println(ourActive.getName()+" did not make a move!");
+			{
+				System.err.println(enemyActive.getName()+" did not make a move!");
+				return;
+			}
+			Damage damageDone = new Damage(usingMove, enemyActive, ourActive);
+			int damageAmount = damageDone.applyDamage();
+			System.out.println(enemyActive.getName()+" used "+usingMove.name+"!");
+			if(ourActive.isAlive())
+			{
+				System.err.println("Damage done: "+damageAmount+"%");
+				damageDoneToUs += damageAmount;
+			}
+			else
+			{
+				ourActive = null;
+				for(int i = 0; i < ourTeam.length; i++)
+				{
+					if(ourTeam[i] == null || !ourTeam[i].isAlive())
+						continue;
+					if(ourActive == null)
+					{
+						ourActive = ourTeam[i];
+						damageDoneToUs += damageAmount;
+						continue;
+					}
+					MinimaxNode node = new MinimaxNode(parent,ourTeam[i]);
+					node.damageDoneToUs += damageAmount;
+				}
+				if(ourActive == null)
+				{
+					parent.children.remove(this);
+					parent = null;
+				}
+			}
 		}
 		else if(action instanceof Change)
 		{
 			switchingTo = ((Change) action).switchTo;
 			if(switchingTo == null)
-				System.err.println(ourActive.getName()+" did not switch!");
+			{
+				System.err.println(enemyActive.getName()+" did not switch!");
+				return;
+			}
+			damageDoneToEnemy += action.sendToShowdown(this);
+			enemyActive = switchingTo;
 		}
 		decision = action;
 	}
@@ -318,7 +327,7 @@ public class MinimaxNode
 	protected int getDecisionScore()
 	{
 		getDecision();
-		MinimaxAI.score(this, decision);
+		MinimaxAI.score(this);
 		return decision.score;
 	}
 
@@ -351,9 +360,11 @@ public class MinimaxNode
 	 */
 	protected MinimaxNode[] getChildren()
 	{
-		if(children == null)
-			return new MinimaxNode[0];
-		return children;
+		MinimaxNode[] childArray = new MinimaxNode[0];
+		if(children == null || children.isEmpty())
+			return childArray;
+		childArray = children.toArray(childArray);
+		return childArray;
 	}
 	/**
 	 * Gets how far down this node is down the tree.
@@ -393,15 +404,6 @@ public class MinimaxNode
 	protected int getDamageDoneUs()
 	{
 		return damageDoneToUs;
-	}
-	
-	/**
-	 * Adds <i>damage</i> to the damage done to us.
-	 * @param damage (int): The damage to add to our total.
-	 */
-	public void addDamageDoneUs(int damage)
-	{
-		damageDoneToUs += damage;
 	}
 	
 	/**
@@ -474,8 +476,11 @@ public class MinimaxNode
 	 */
 	protected String getDecisionName()
 	{
-		if(decision.name == null)
+		if(decision == null)
+		{
 			System.err.println(ourActive.getName()+"'s decision was null!");
+			return null;
+		}
 		return decision.name;
 	}
 
@@ -495,5 +500,14 @@ public class MinimaxNode
 	public void setEnemyPokemon(Pokemon switchTo) 
 	{
 		enemyActive = switchTo;
+	}
+
+	/**
+	 * Returns our Pokemon team as an array.
+	 * @return (Pokemon[]): Our Pokemon team.
+	 */
+	public Pokemon[] getOurTeam() 
+	{
+		return ourTeam;
 	}
 }

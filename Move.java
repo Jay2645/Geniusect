@@ -88,7 +88,16 @@ public class Move {
 	{
 		//Called when this move is used.
 		if(user.getItem() != null && user.getItem().name.toLowerCase().startsWith("choice"))
+		{
 			user.setLockedInto(this);
+			Move[] moveset = user.getMoveset();
+			for(int i = 0; i < moveset.length; i++)
+			{
+				if(moveset[i] == null || moveset[i].name.equals(name))
+					continue;
+				moveset[i].disabled = true;
+			}
+		}
 		ShowdownHelper showdown = enemy.getTeam().getShowdown();
 		if(showdown == null || user.getTeam().getTeamID() == 1)
 		{

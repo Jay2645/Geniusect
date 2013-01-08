@@ -89,25 +89,64 @@ public class GenericAI {
 	protected static Action bestMove(Pokemon user, Pokemon opponent, Pokemon[] userTeam, Battle b)
 	{
 		Action doNext;
-		if(shouldSwitch(user,opponent))
+		int switchConfidence = shouldSwitch(user,opponent);
+		if(switchConfidence > 0 || ourBestMove == null)
 		{
 			Change sanityCheck = new Change(Change.bestChange(user, userTeam, opponent, Pokequations.bestMove(opponent, user),b.getShowdown()),b);
-			if(sanityCheck.switchTo.getName().toLowerCase().startsWith(user.getName().toLowerCase()))
+			if(switchConfidence <= 2 && ourBestMove != null)
 			{
-				/*Pokemon attemptTwo = Change.bestCounter(userTeam, opponent,user);
-				if(attemptTwo != null && !attemptTwo.getName().startsWith(user.getName()))
-				{
-					System.err.println("Switch found, but it was us. Second attempt produced "+attemptTwo.getName());
-					doNext = new Change(attemptTwo,b);
-				}
+				ourBestMove = Pokequations.bestMove(user, opponent);
+				theirBestMove = Pokequations.bestMove(opponent,user,ourBestMove);
+				Pokemon sanityChange = sanityCheck.switchTo;
+				int switchDamage = sanityChange.getHealth() - theirBestMove.getProjectedPercent(sanityChange, true) - Change.calculateSwitchDamagePercent(sanityChange);
+				turnsToKillUs = Pokequations.turnsToKill(user.getHealth(), theirBestMove.getProjectedPercent(user).y + ourBestMove.recoilPercent);
+				turnsToKillThem = Pokequations.turnsToKill(opponent.getHealth(), ourBestMove.getProjectedPercent(opponent).x + theirBestMove.recoilPercent);
+				deficit = turnsToKillUs - turnsToKillThem;
+				if(switchDamage < 0 || deficit > 0 || deficit == 0 && (ourBestMove.priority > theirBestMove.priority 
+												|| ourBestMove.priority == theirBestMove.priority && user.isFasterThan(opponent)))
+					doNext = new Attack(ourBestMove,user,opponent,b);
 				else
-				{*/
+					doNext = sanityCheck;
+			}
+			else if(switchConfidence > 2 && switchConfidence < 4)
+			{
+				if(ourBestMove != null && sanityCheck.switchTo.getName().toLowerCase().startsWith(user.getName().toLowerCase()))
+				{
 					System.err.println("Switch found, but it was us.");
 					doNext = new Attack(ourBestMove,user,opponent,b);
-				//}
+				}
+				else 
+					doNext = sanityCheck;
 			}
-			else 
-				doNext = sanityCheck;
+			else
+			{
+				ourBestMove = Pokequations.bestMove(user, opponent);
+				theirBestMove = Pokequations.bestMove(opponent,user,ourBestMove);
+				Pokemon sanityChange = sanityCheck.switchTo;
+				int switchDamage = sanityChange.getHealth() - theirBestMove.getProjectedPercent(sanityChange, true) - Change.calculateSwitchDamagePercent(sanityChange);
+				turnsToKillUs = Pokequations.turnsToKill(user.getHealth(), theirBestMove.getProjectedPercent(user).y + ourBestMove.recoilPercent);
+				turnsToKillThem = Pokequations.turnsToKill(opponent.getHealth(), ourBestMove.getProjectedPercent(opponent).x + theirBestMove.recoilPercent);
+				deficit = turnsToKillUs - turnsToKillThem;
+				if(switchDamage <= 0 || deficit > 0 || deficit == 0 && (ourBestMove.priority > theirBestMove.priority 
+												|| ourBestMove.priority == theirBestMove.priority && user.isFasterThan(opponent)))
+					doNext = new Attack(ourBestMove,user,opponent,b);
+				else if(sanityCheck.switchTo.getName().toLowerCase().startsWith(user.getName().toLowerCase()))
+				{
+					Pokemon attemptTwo = Change.bestCounter(userTeam, opponent,user);
+					if(ourBestMove == null || attemptTwo != null && !attemptTwo.getName().startsWith(user.getName()))
+					{
+						System.err.println("Switch found, but it was us. Second attempt produced "+attemptTwo.getName());
+						doNext = new Change(attemptTwo,b);
+					}
+					else
+					{
+						System.err.println("Switch found, but it was us.");
+						doNext = new Attack(ourBestMove,user,opponent,b);
+					}
+				}
+				else 
+					doNext = sanityCheck;
+			}
 		}
 		else
 		{
@@ -125,31 +164,56 @@ public class GenericAI {
 	
 	/**
 	 * Generic (scripted) behavior. 
-	 * Finds the best Pokemon we can switch to.
 	 * Calculates best moves for both teams and the amount of turns it is projected to take to kill either side.
+	 * Then provides a boolean saying if it is better to switch or stay in.
 	 * @param user - The user's Pokemon.
 	 * @param opponent - The opponent's Pokemon.
-	 * @return boolean - TRUE if we should switch, FALSE if we should stay in.
+	 * @return int - An int representing a rough estimate of the amount of danger we are in should we stay in.
+	 * Higher numbers mean we should switch.
 	 */
-	private static boolean shouldSwitch(Pokemon user, Pokemon opponent)
+	private static int shouldSwitch(Pokemon user, Pokemon opponent)
 	{
 		theirBestMove = Pokequations.bestMove(opponent,user);
-		ourBestMove = Pokequations.bestMove(user, opponent,theirBestMove);
+		//Check if we're locked into a move:
+		Move lockedInto = user.getLockedInto();
+		if(lockedInto == null)
+			ourBestMove = Pokequations.bestMove(user, opponent,theirBestMove);
+		else
+			ourBestMove = lockedInto;
 		ShowdownHelper showdown = GeniusectAI.getShowdown();
+		//First we check to see if we're trapped. If we are, we can't switch.
 		if(!user.canSwitch() || showdown != null && showdown.isTrapped())
-			return false;
+			return Integer.MIN_VALUE;
+		//If we've taken heavy stat drops, we should switch.
+		int stats = 0;
 		for(int i = 0; i < 6; i++)
 		{
-			if(user.getBoosts(Stat.fromInt(i)) <= -2)
-				return true;
+			stats += user.getBoosts(Stat.fromInt(i));
 		}
+		if(stats < 0)
+			return -stats;
+		//If we have no good moves to use, we should also switch.
+		if(ourBestMove == null ||  Pokequations.damageMultiplier(ourBestMove.type, opponent.getTypes()) == 0)
+			return 8;
+		//We assume the opponent has one type of either STAB, then check if either is super effective against us.
+		//If it is, we switch.
+		double damageType1 = Pokequations.damageMultiplier(opponent.getType(0), user.getTypes());
+		double damageType2 = Pokequations.damageMultiplier(opponent.getType(1), user.getTypes());
+		double damageMult = damageType1 * damageType2;
+		if(damageMult > 2 || damageMult == 2 && opponent.isFasterThan(user))
+			return 8;
+		//If we have a move to use, but it doesn't do any damage, we should switch.
+		if(ourBestMove.getProjectedPercent(opponent).y <= 20)
+			return 6;	
+		//Now we check to see if we have anyone who better-prepared than us at killing the enemy. If so, we switch.
+		//First calculate our best multiplier.
 		Pokemon[] userTeam = user.getPokemonTeam();
 		double userDamageMult = 0;
 		Move[] userMoveset = user.getMoveset();
 		if(userMoveset == null || userMoveset[0] == null)
 		{
 			userDamageMult = Math.max(	Pokequations.damageMultiplier(user.getType(0), opponent.getTypes()),
-									Pokequations.damageMultiplier(user.getType(1), opponent.getTypes()));
+										Pokequations.damageMultiplier(user.getType(1), opponent.getTypes()));
 		}
 		else
 		{
@@ -162,65 +226,57 @@ public class GenericAI {
 					userDamageMult = damageType;
 			}
 		}
-		double teamDamageMult = 0;
-		for(int i = 0; i < 6; i++)
+		//If we have no super-effective moves to use, we check if anyone else has a good multiplier.
+		if(userDamageMult < 2)
 		{
-			if(userTeam[i] == null || userTeam[i].getName() == user.getName() || !userTeam[i].isAlive())
-				continue;
-			Move[] userMoves = userTeam[i].getMoveset();
-			if(userMoves == null || userMoves[0] == null)
+			double teamDamageMult = 0;
+			for(int i = 0; i < 6; i++)
 			{
-				teamDamageMult = Math.max(	Pokequations.damageMultiplier(userTeam[i].getType(0), opponent.getTypes()),
-											Pokequations.damageMultiplier(userTeam[i].getType(1), opponent.getTypes()));
-			}
-			else
-			{
-				for(int m = 0; m < 4; m++)
+				if(userTeam[i] == null || userTeam[i].getName() == user.getName() || !userTeam[i].isAlive())
+					continue;
+				Move[] userMoves = userTeam[i].getMoveset();
+				if(userMoves == null || userMoves[0] == null)
 				{
-					if(userMoves[m] == null || userMoves[m].disabled)
-						continue;
-					double damageType = Pokequations.damageMultiplier(userMoves[m].type, opponent.getTypes());
-					if(damageType > teamDamageMult)
-						userDamageMult = damageType;
+					teamDamageMult = Math.max(	Pokequations.damageMultiplier(userTeam[i].getType(0), opponent.getTypes()),
+												Pokequations.damageMultiplier(userTeam[i].getType(1), opponent.getTypes()));
+				}
+				else
+				{
+					for(int m = 0; m < 4; m++)
+					{
+						if(userMoves[m] == null || userMoves[m].disabled)
+							continue;
+						double damageType = Pokequations.damageMultiplier(userMoves[m].type, opponent.getTypes());
+						if(damageType > teamDamageMult)
+							userDamageMult = damageType;
+					}
 				}
 			}
+			//If someone has a higher multiplier than us, we should switch.
+			if(teamDamageMult > userDamageMult)
+				return (int)Math.floor((teamDamageMult * 2) - (userDamageMult * 2));
 		}
-		if(teamDamageMult > userDamageMult)
-			return true;	//Someone can deal more damage than us.
-		Move lockedInto = user.getLockedInto();
+		//Now we go back to our locked-into move and see if it's a good idea to stay in.
 		if(lockedInto != null)
 		{
 			int mostDamage = lockedInto.getProjectedPercent(opponent).y;
-			if(mostDamage > 15)
-				return true;
+			if(mostDamage <= 20)
+				return 6;
 			theirBestMove = Pokequations.bestMove(opponent,user,lockedInto);
-			if(theirBestMove == null)
-				return false;
 			ourBestMove = lockedInto;
 		}
-		else
-		{
-			if(theirBestMove == null)
-				return false;
-			if(ourBestMove == null)
-				return true;
-		}
+		//If they don't have any good moves to use against us (and they have passed all prior checks), then we should stay in.
+		if(theirBestMove == null)
+			return -1;
+		//Calculate how long it'll take to kill one another, then see if we can kill them faster than they can kill us.
 		turnsToKillUs = Pokequations.turnsToKill(user.getHealth(), theirBestMove.getProjectedPercent(user).y + ourBestMove.recoilPercent);
 		turnsToKillThem = Pokequations.turnsToKill(opponent.getHealth(), ourBestMove.getProjectedPercent(opponent).x + theirBestMove.recoilPercent);
-		
 		deficit = turnsToKillUs - turnsToKillThem;
-		double damageType1 = Pokequations.damageMultiplier(opponent.getType(0), user.getTypes());
-		double damageType2 = Pokequations.damageMultiplier(opponent.getType(1), user.getTypes());
-		double damageMult = damageType1 * damageType2;
-		if(damageMult > 2)
-			return true;
-		if(deficit == 0 && ourBestMove.priority > theirBestMove.priority)
-			return false;
-		if(damageMult == 2 && opponent.isFasterThan(user))
-			return true;
+		if(deficit == 0 && (ourBestMove.priority > theirBestMove.priority 
+						|| ourBestMove.priority == theirBestMove.priority && user.isFasterThan(opponent)))
+			return -1;
 		if(deficit < 0 || deficit == 0 && opponent.isFasterThan(user))
-			return true;
-		else return false;
+			return 4;
+		else return -deficit;
 	}
-
 }

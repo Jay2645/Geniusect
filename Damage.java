@@ -29,8 +29,7 @@ public class Damage {
 		int damage = attack.useMove(false, attacker, defender);
 		if(damage < 0)
 		{
-			attacker.restoreHP(damage);
-			return -damage;
+			return -attacker.restoreHP(damage);
 		}
 		if(defender == null || damage == 0)
 			return 0;

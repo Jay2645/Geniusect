@@ -5,9 +5,16 @@
 
 package geniusect;
 
+import java.util.List;
+
 import com.seleniumhelper.ShowdownHelper;
 
 public class Team {
+	public Team(Team clone)
+	{
+		clone(clone);
+	}
+	
 	public Team(int id, Battle b)
 	{
 		teamID = id;
@@ -62,41 +69,31 @@ public class Team {
 	
 	public Pokemon addPokemon(String s, ShowdownHelper helper)
 	{
+		Pokemon p = null;
 		showdown = helper;
-		for(int i = 0; i < team.length; i++)
-		{
-			if(team[i] == null)
-				break;
-			if(team[i].nameIs(s))
-				return team[i];
-		}
-		Pokemon p = new Pokemon(s, "", this); //TODO: Nicknames.
-		return addPokemon(p);
-	}
-	public Pokemon addPokemon(Pokemon p)
-	{
-		//Adds Pokemon to a team. If a Pokemon has already been added, returns that Pokemon.
 		for(int i = 0; i < team.length; i++)
 		{
 			if(team[i] == null)
 			{
 				//System.err.println("Adding "+p.name+" to team ID "+teamID);
-				if(p.getMove(0) == null)
-					p = new Pokemon(p.getName(), "", this); //TODO: Nicknames.
+				p = new Pokemon(s, "", this); //TODO: Nicknames.
 				team[i] = p;
-				team[i].setHelper(showdown);
 				break;
 			}
-			else if(team[i].nameIs(p.getName()))
+			else if(team[i].nameIs(s))
 			{
 				team[i].setTeam(this);
-				team[i].setHelper(showdown);
 				p = team[i];
 				break;
 			}
 		}
 		hasInitialized = true;
 		return p;
+	}
+	public Pokemon addPokemon(Pokemon p)
+	{
+		//Adds Pokemon to a team. If a Pokemon has already been added, returns that Pokemon.
+		return addPokemon(p.getName(), showdown);
 	}
 	
 	
@@ -291,5 +288,21 @@ public class Team {
 			}
 		}
 		return false;
+	}
+	
+	private void clone(Team clone)
+	{
+		team = clone.team.clone();
+		active = team[clone.active.getID()];
+		teamID = clone.teamID;
+		enemyID = clone.enemyID;
+		teamName = clone.teamName;
+		userName = clone.userName;
+		hasInitialized = clone.hasInitialized;
+		teamDefModifier = clone.teamDefModifier;
+		teamSpDModifier = clone.teamSpDModifier;
+		
+		showdown = clone.showdown;
+		
 	}
 }
