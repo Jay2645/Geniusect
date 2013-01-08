@@ -10,6 +10,7 @@ import geniusect.Move;
 import geniusect.Pokemon;
 import geniusect.Pokequations;
 import geniusect.Stat;
+import geniusect.Status;
 
 //	An example of the generic AI in action:
 // 	http://pastebin.com/tBcb6F2m
@@ -174,6 +175,8 @@ public class GenericAI {
 	private static int shouldSwitch(Pokemon user, Pokemon opponent)
 	{
 		theirBestMove = Pokequations.bestMove(opponent,user);
+		if(user.getStatus() == Status.Sleep && !user.hasMove("Sleep Talk") && !user.hasMove("Snore") && !user.hasMove("Rest"))
+			return 6;
 		//Check if we're locked into a move:
 		Move lockedInto = user.getLockedInto();
 		if(lockedInto == null)

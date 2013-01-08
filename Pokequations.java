@@ -332,8 +332,15 @@ public class Pokequations {
 	{
 		if(attacker.getLockedInto() != null)
 			return attacker.getLockedInto();
-		Point damage = new Point(Integer.MIN_VALUE, Integer.MIN_VALUE + 1);
 		Move use = null;
+		if(attacker.getStatus() == Status.Rest || attacker.getStatus() == Status.Sleep)
+		{
+			if(attacker.hasMove("Sleep Talk"))
+				use = attacker.getMove("Sleep Talk");
+			else if(attacker.hasMove("Snore"))
+				use = attacker.getMove("Snore");
+		}
+		Point damage = new Point(Integer.MIN_VALUE, Integer.MIN_VALUE + 1);
 		for(int i = 0; i < moveset.length; i++)
 		{
 			if(moveset[i] == null || moveset[i].disabled || moveset[i].pp <= 0)

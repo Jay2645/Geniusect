@@ -996,4 +996,29 @@ public class Pokemon {
 	{
 		enemy = newEnemy;
 	}
+
+	/**
+	 * Returns our current status.
+	 * @return (Status): Our current status.
+	 */
+	public Status getStatus() 
+	{
+		return status;
+	}
+
+	/**
+	 * Takes a string and returns the move with that name.
+	 * If there is no move with that name, returns null.
+	 * @param string (String): The name of the move in question.
+	 * @return (Move): The move we're going to use.
+	 */
+	public Move getMove(String string) 
+	{
+		for(int i = 0; i < moveset.length; i++)
+		{
+			if(moveset[i].name.toLowerCase().contains(string.toLowerCase()))
+				return moveset[i];
+		}
+		return null;
+	}
 }
