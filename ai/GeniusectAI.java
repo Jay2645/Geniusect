@@ -137,7 +137,7 @@ public class GeniusectAI {
 	public static void main(String[] args) {
 		WebDriver driver = new FirefoxDriver();
     	// wait up to 10 seconds for elements to load
-    	driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
+    	driver.manage().timeouts().implicitlyWait(20, TimeUnit.SECONDS);
         
         showdown = new ShowdownHelper(driver);
 		if(showdown == null)
@@ -264,36 +264,6 @@ public class GeniusectAI {
 		enemy = t;
 	}
 	
-	/**
-	 * Called when a Pokemon dies. The AI finds the best Pokemon to change to.
-	 * @param dead - The Pokemon that died.
-	 * @return Change - The Change action specifying which Pokemon to switch to.
-	 */
-	public static Change onPokemonDeath(Pokemon dead)
-	{
-		if(battle == null || battle.isPlaying())
-		{
-			//Called when a Pokemon gets killed.
-			Pokemon change = Change.bestCounter(dead.getPokemonTeam(), dead.getEnemy());
-			if(change == null)
-			{
-				System.err.println(dead.getEnemy().getName()+" wins the game!");
-				boolean won = false;
-				if(dead.getTeam() == enemy)
-					won = true;
-				gameOver(won);
-				return null;
-			}
-			else
-			{
-				Change c = new Change(change,battle);
-				c.say("Oh my god! You killed "+dead.getName()+"! D:");
-				c.deploy();
-				return c;
-			}
-		}
-		return null;
-	}
 	/**
 	 * Resets the AI on game over.
 	 * @param won - TRUE if the player won the game, FALSE if the player lost.

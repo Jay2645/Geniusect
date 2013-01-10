@@ -50,7 +50,7 @@ public class Attack extends Action {
 			else if(m.name.toLowerCase().startsWith("struggle"))
 				move = m;
 			else
-				move = new Move("struggle", attack);
+				move = new Move("struggle", attack, false);
 		}
 		else
 			move = m;
@@ -85,7 +85,10 @@ public class Attack extends Action {
 			}
 			try
 			{
-				showdown.doMove(move.name);
+				if(move.name.toLowerCase().startsWith("hidden power"))
+					showdown.doMove("Hidden Power");
+				else
+					showdown.doMove(move.name);
 			}
 			catch (Exception e)
 			{

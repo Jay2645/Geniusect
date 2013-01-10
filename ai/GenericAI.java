@@ -11,6 +11,7 @@ import geniusect.Pokemon;
 import geniusect.Pokequations;
 import geniusect.Stat;
 import geniusect.Status;
+import geniusect.Team;
 
 //	An example of the generic AI in action:
 // 	http://pastebin.com/tBcb6F2m
@@ -53,6 +54,11 @@ public class GenericAI {
 	protected static int deficit;
 	
 	/**
+	 * The Battle this AI is in.
+	 */
+	protected static Battle battle;
+	
+	/**
 	 * Generic (scripted) behavior. 
 	 * Finds the best move we can use or Pokemon we can switch to and returns the Action.
 	 * @param b (Battle): The Battle to use.
@@ -89,11 +95,12 @@ public class GenericAI {
 	 */
 	protected static Action bestMove(Pokemon user, Pokemon opponent, Pokemon[] userTeam, Battle b)
 	{
+		battle = b;
 		Action doNext;
 		int switchConfidence = shouldSwitch(user,opponent);
 		if(switchConfidence > 0 || ourBestMove == null)
 		{
-			Change sanityCheck = new Change(Change.bestChange(user, userTeam, opponent, Pokequations.bestMove(opponent, user),b.getShowdown()),b);
+			Change sanityCheck = new Change(Change.bestChange(user, userTeam, opponent, Pokequations.bestMove(opponent, user),battle.getShowdown()),battle);
 			if(switchConfidence <= 2 && ourBestMove != null)
 			{
 				ourBestMove = Pokequations.bestMove(user, opponent);
@@ -105,7 +112,7 @@ public class GenericAI {
 				deficit = turnsToKillUs - turnsToKillThem;
 				if(switchDamage < 0 || deficit > 0 || deficit == 0 && (ourBestMove.priority > theirBestMove.priority 
 												|| ourBestMove.priority == theirBestMove.priority && user.isFasterThan(opponent)))
-					doNext = new Attack(ourBestMove,user,opponent,b);
+					doNext = new Attack(ourBestMove,user,opponent,battle);
 				else
 					doNext = sanityCheck;
 			}
@@ -114,7 +121,7 @@ public class GenericAI {
 				if(ourBestMove != null && sanityCheck.switchTo.getName().toLowerCase().startsWith(user.getName().toLowerCase()))
 				{
 					System.err.println("Switch found, but it was us.");
-					doNext = new Attack(ourBestMove,user,opponent,b);
+					doNext = new Attack(ourBestMove,user,opponent,battle);
 				}
 				else 
 					doNext = sanityCheck;
@@ -130,19 +137,19 @@ public class GenericAI {
 				deficit = turnsToKillUs - turnsToKillThem;
 				if(switchDamage <= 0 || deficit > 0 || deficit == 0 && (ourBestMove.priority > theirBestMove.priority 
 												|| ourBestMove.priority == theirBestMove.priority && user.isFasterThan(opponent)))
-					doNext = new Attack(ourBestMove,user,opponent,b);
+					doNext = new Attack(ourBestMove,user,opponent,battle);
 				else if(sanityCheck.switchTo.getName().toLowerCase().startsWith(user.getName().toLowerCase()))
 				{
 					Pokemon attemptTwo = Change.bestCounter(userTeam, opponent,user);
 					if(ourBestMove == null || attemptTwo != null && !attemptTwo.getName().startsWith(user.getName()))
 					{
 						System.err.println("Switch found, but it was us. Second attempt produced "+attemptTwo.getName());
-						doNext = new Change(attemptTwo,b);
+						doNext = new Change(attemptTwo,battle);
 					}
 					else
 					{
 						System.err.println("Switch found, but it was us.");
-						doNext = new Attack(ourBestMove,user,opponent,b);
+						doNext = new Attack(ourBestMove,user,opponent,battle);
 					}
 				}
 				else 
@@ -151,7 +158,7 @@ public class GenericAI {
 		}
 		else
 		{
-			doNext = new Attack(ourBestMove,user,opponent,b);
+			doNext = new Attack(ourBestMove,user,opponent,battle);
 		}
 		if(doNext instanceof Attack)
 		{
@@ -183,9 +190,8 @@ public class GenericAI {
 			ourBestMove = Pokequations.bestMove(user, opponent,theirBestMove);
 		else
 			ourBestMove = lockedInto;
-		ShowdownHelper showdown = GeniusectAI.getShowdown();
 		//First we check to see if we're trapped. If we are, we can't switch.
-		if(!user.canSwitch() || showdown != null && showdown.isTrapped())
+		if(!user.canSwitch())
 			return Integer.MIN_VALUE;
 		//If we've taken heavy stat drops, we should switch.
 		int stats = 0;
@@ -279,7 +285,51 @@ public class GenericAI {
 						|| ourBestMove.priority == theirBestMove.priority && user.isFasterThan(opponent)))
 			return -1;
 		if(deficit < 0 || deficit == 0 && opponent.isFasterThan(user))
-			return 4;
+		{
+			Pokemon changeTo = Change.bestChange(user, userTeam, opponent, Pokequations.bestMove(opponent, user),battle.getShowdown());
+			if(Pokequations.turnsToKill(changeTo.getHealth(), theirBestMove.getProjectedPercent(changeTo).y) > 2)
+				return 5;
+			else return 3;
+		}
 		else return -deficit;
+	}
+	
+	/**
+	 * Called when a Pokemon dies. The AI finds the best Pokemon to change to.
+	 * @param dead - The Pokemon that died.
+	 * @return Change - The Change action specifying which Pokemon to switch to.
+	 */
+	public static Change onPokemonDeath(Pokemon dead)
+	{
+		Battle battle = GeniusectAI.getBattle();
+		ShowdownHelper showdown = battle.getShowdown();
+		if(battle == null || battle.isPlaying())
+		{
+			//Called when a Pokemon gets killed.
+			Pokemon change;
+			if(showdown == null)
+			{
+				change = Change.bestCounter(dead.getPokemonTeam(), dead.getEnemy());
+			}
+			else
+			{
+				change = Change.bestCounter(showdown.getSwitchableTeam(), dead.getTeam(), dead.getEnemy());
+			}
+			if(change == null)
+			{
+				System.err.println(dead.getEnemy().getName()+" wins the game!");
+				boolean won = dead.getTeam() == Team.getEnemyTeam(0);
+				GeniusectAI.gameOver(won);
+				return null;
+			}
+			else
+			{
+				Change c = new Change(change,battle);
+				c.say("Oh my god! You killed "+dead.getName()+"! D:");
+				c.deploy();
+				return c;
+			}
+		}
+		return null;
 	}
 }

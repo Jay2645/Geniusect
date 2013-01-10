@@ -194,7 +194,7 @@ public class Battle {
 				}
 				catch (Exception l)
 				{
-					System.err.println("Could not leave battle. Exception data: "+e);
+					System.err.println("Could not leave battle. Exception data: "+l);
 				}
 				return false;
 			}
@@ -462,4 +462,65 @@ public class Battle {
 		turnCount = i;
 	}
 
+	/**
+	 * Rebuilds each team all over again.
+	 */
+	public void rebuildTeams() 
+	{
+		if(showdown != null)
+		{
+			players[0] = new Team(0,this);
+			players[1] = new Team(1,this);
+			populateTeams();
+			Team enemy = players[1];
+			String enemyUsername = enemy.getUsername();
+			String activeEnemy = showdown.getCurrentPokemon(enemyUsername,true);
+			Pokemon enemyPoke = enemy.getPokemon(activeEnemy);
+			if(enemyPoke != null)
+				enemy.setActive(enemyPoke);
+			Pokemon[] enemyTeam = enemy.getPokemon();
+			for(int i = 0; i < enemyTeam.length; i++)
+			{
+				if(enemyTeam[i] == null)
+					continue;
+				boolean alive = enemyTeam[i].isAlive();
+				String teamName = enemyTeam[i].getName();
+				boolean actualAlive = showdown.isFainted(teamName, enemyUsername);
+				if(alive && !actualAlive)
+				{
+					enemyTeam[i].onDie();
+				}
+				else if(!alive && actualAlive)
+				{
+					enemyTeam[i].setHP(showdown.getHP(teamName, enemyUsername), showdown.getMaxHP(teamName, enemyUsername));
+				}
+			}
+			players[1] = enemy;
+			Team us = players[0];
+			String usUsername = us.getUsername();
+			String activeUs = showdown.getCurrentPokemon(usUsername,true);
+			Pokemon poke = us.getPokemon(activeUs);
+			if(poke != null)
+				us.setActive(poke);
+			Pokemon[] usTeam = us.getPokemon();
+			for(int i = 0; i < usTeam.length; i++)
+			{
+				if(usTeam[i] == null)
+					continue;
+				boolean alive = usTeam[i].isAlive();
+				String teamName = usTeam[i].getName();
+				boolean actualAlive = showdown.isFainted(teamName, usUsername);
+				if(alive && !actualAlive)
+				{
+					usTeam[i].onDie();
+				}
+				else if(!alive && actualAlive)
+				{
+					usTeam[i].setHP(showdown.getHP(teamName, usUsername), showdown.getMaxHP(teamName, usUsername));
+				}
+				usTeam[i].resetMoves(showdown.getMoves(usTeam[i].getName()));
+			}
+			players[0] = us;
+		}
+	}
 }

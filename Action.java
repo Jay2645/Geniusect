@@ -41,7 +41,34 @@ public class Action
 				GeniusectAI.lastTurnLogic();
 			boolean switched = findPokemon(lastTurn);
 			findMove(lastTurn);
-			//TODO:	Update Pokemon of both teams.
+			/*for(int t = 0; t < 2; t++)
+			{
+				Team team = battle.getTeam(t);
+				String owner = team.getUsername();
+				Pokemon[] pokeTeam = team.getPokemon();
+				for(int i = 0; i < pokeTeam.length; i++)
+				{
+					pokeTeam[i].setHP(showdown.getHP(pokeTeam[i].name, owner), showdown.getMaxHP(pokeTeam[i].getName(), owner));
+					if(t == 0)
+					{
+						List<String> ourMoves = showdown.getMoves(name,true);
+						for(int m = 0; m < ourMoves.size(); m++)
+						{
+							Move newMove = new Move(ourMoves.get(m),pokeTeam[i],true);
+							try
+							{
+								newMove.pp = showdown.getMoveRemainingPP(newMove.name);
+							}
+							catch(Exception e)
+							{
+								e.printStackTrace();
+							}
+							pokeTeam[i].clearMoves();
+							pokeTeam[i].addMove(newMove);
+						}
+					}
+				}
+			}*/
 			if(switched && this instanceof Attack)
 			{
 				Attack a = (Attack)this;
@@ -96,25 +123,8 @@ public class Action
 				b.newTurn();
 			else if(nextTurn == TurnEndStatus.SWITCH)
 			{
-				Pokemon change = b.getTeam(0).getActive().onDie();
-				if(change == null)
-				{
-					System.err.println("Could not find Pokemon to switch to!");
-					showdown.leaveBattle();
-				}
-				else
-				{
-					try
-					{
-						System.out.println("We have died! Switching to "+change.getName());
-						showdown.switchTo(change.getName(), false);
-						b.newTurn();
-					}
-					catch(Exception e)
-					{
-						onException(this,e,b);
-					}
-				}
+				b.getTeam(0).getActive().onDie();
+				b.newTurn();
 			}
 			else if (nextTurn == TurnEndStatus.WON)
 			{
@@ -184,7 +194,6 @@ public class Action
 				}
 			}
 			System.out.println(tempname+" used "+tempmove+" for "+dmg+"% damage. Was it a crit? "+crit);
-			System.err.println(tempname+"'s enemy is "+poke.getEnemy());
 			poke.onNewTurn(tempmove, dmg, crit);
 		}
 		findDrops(text);
@@ -343,33 +352,19 @@ public class Action
 			return;
 		}
 		GeniusectAI.print("Attempting to rectify: attempt number "+failure.attempt+" / 4");
-		if(showdown != null)
-		{
-			Team enemy = battle.getTeam(1);
-			String activeEnemy = showdown.getCurrentPokemon(enemy.getUsername(),true);
-			Pokemon enemyPoke = enemy.getPokemon(activeEnemy);
-			if(enemyPoke != null)
-				enemy.setActive(enemyPoke);
-			//TODO: Recheck enemy team's alive/dead states.
-			Team us = battle.getTeam(0);
-			String activeUs = showdown.getCurrentPokemon(us.getUsername(),true);
-			Pokemon poke = us.getPokemon(activeUs);
-			if(poke != null)
-				us.setActive(poke);
-			//TODO: Recheck our team's alive/dead states.
-			poke.resetMoves(showdown.getMoves());
-		}
 		Action a;
+		battle.rebuildTeams();
 		if(battle.getTeam(0).getActive().isAlive())
 		{
 			a = GenericAI.bestMove(battle);
 		}
 		else
 		{
-			Pokemon p = Change.bestCounter(battle.getTeam(0).getPokemon(),battle.getTeam(1).getActive());
+			Pokemon p = Change.bestCounter(battle.getTeam(0).getPokemonTeam(),battle.getTeam(1).getActive());
 			a = new Change(p, battle);
 		}
 		a.attempt = failure.attempt + 1;
 		a.sendToShowdown(battle);
+		battle.newTurn();
 	}
 }

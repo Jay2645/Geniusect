@@ -320,7 +320,7 @@ public class Pokequations {
 		}
 		if(foundMove)
 			return bestMove(attacker,defender);
-		else return new Move("Struggle", attacker);
+		else return new Move("Struggle", attacker, false);
 	}
 	
 	public static Move bestMove(Pokemon attacker, Pokemon defender)
@@ -339,20 +339,46 @@ public class Pokequations {
 				use = attacker.getMove("Sleep Talk");
 			else if(attacker.hasMove("Snore"))
 				use = attacker.getMove("Snore");
+			if(use != null)
+				return use;
 		}
+		Team attackerTeam = attacker.getTeam();
+		int aliveCount = attackerTeam.getAliveCount();
 		Point damage = new Point(Integer.MIN_VALUE, Integer.MIN_VALUE + 1);
 		for(int i = 0; i < moveset.length; i++)
 		{
 			if(moveset[i] == null || moveset[i].disabled || moveset[i].pp <= 0)
 			{
-				System.err.println(attacker.getName()+"'s move "+moveset[i]+" is null or disabled!");
+				if(attacker.getTeam().getTeamID() == 0)
+					System.err.println(attacker.getName()+"'s move "+moveset[i]+" is null or disabled!");
 				continue;
 			}
-			System.out.println(moveset[i].name);
+			if(use != null)
+				System.out.println("Move to use is "+use.name);
+			System.out.println("This move is "+moveset[i].name);
+			if(aliveCount > 1)
+			{
+				if(moveset[i].shortname.equals("stealthrock"))
+				{
+					if(!defender.getTeam().hasMaxHazard(EntryHazard.StealthRock))
+						return moveset[i];
+				}
+				else if(moveset[i].shortname.equals("toxicspikes"))
+				{
+					if(!defender.getTeam().hasMaxHazard(EntryHazard.ToxicSpikes))
+						return moveset[i];
+				}
+				else if(moveset[i].shortname.equals("spikes"))
+				{
+					if(!defender.getTeam().hasMaxHazard(EntryHazard.Spikes))
+						return moveset[i];
+				}
+			}
 			if(use == null)
 			{
 				use = moveset[i];
 				damage = calculateDamage(attacker, moveset[i],defender);
+				System.out.println("Assigning "+moveset[i].name+" to be the used move to prevent Struggle call.");
 				continue;
 			}
 			Point moveDamage;
@@ -364,12 +390,13 @@ public class Pokequations {
 			{
 				damage=moveDamage;
 				use = moveset[i];
+				System.out.println(moveset[i].name+" had a better score than the previous; using it.");
 			}
 		}
 		if(use == null)
 		{
 			System.err.println(attacker.getName()+" could not find move to use, using Struggle.");
-			use = new Move("Struggle", attacker);
+			use = new Move("Struggle", attacker, false);
 		}
 		return use;
 	}

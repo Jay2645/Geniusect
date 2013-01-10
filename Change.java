@@ -5,6 +5,8 @@
 
 package geniusect;
 
+import java.util.List;
+
 import com.seleniumhelper.ShowdownHelper;
 import geniusect.ai.GeniusectAI;
 
@@ -107,6 +109,15 @@ public class Change extends Action {
 		return bestCounter(ourTeam,enemy,null);
 	}
 	
+	public static Pokemon bestCounter(List<String> pokeTeam, Team ourTeam, Pokemon enemy)
+	{
+		Pokemon[] team = new Pokemon[6];
+		for(int i = 0; i < pokeTeam.size(); i++)
+		{
+			team[i] = ourTeam.getPokemon(pokeTeam.get(i));
+		}
+		return bestCounter(team,enemy,null);
+	}
 	public static Pokemon bestChange(Pokemon us, Pokemon[] ourTeam, Pokemon enemy, Move predictedMove, ShowdownHelper showdown)
 	{
 		if(changedRecently(showdown) || us.hasMove("Destiny Bond")) //Make sure this is a sane thing to do or try to take opponent with us if we can.

@@ -16,6 +16,7 @@ import com.seleniumhelper.ShowdownHelper;
 
 public class Move {
 	public String name;
+	public String shortname;
 	public Pokemon user;
 	public int pp;
 	public int power;
@@ -41,6 +42,7 @@ public class Move {
 	public Move(Move clone)
 	{
 		name = clone.name;
+		shortname = clone.shortname;
 		user = clone.user;
 		pp = clone.pp;
 		power = clone.power;
@@ -57,36 +59,61 @@ public class Move {
 		projectedPercent = clone.projectedPercent;
 	}
 	
-	public Move(String n, Pokemon p)
+	public Move(String n, Pokemon p, boolean isShortname)
 	{
-		int i = n.indexOf("\n");
-		if(i == -1)
-			name = n;
-		else
-			name = n.substring(0, i);
 		user = p;
-		if(name.toLowerCase().startsWith("struggle"))
+		if(isShortname == false)
 		{
-			pp = Integer.MAX_VALUE;
-			power = 50;
-			accuracy = 100;
-			type = Type.None;
-			recoilPercent = 25;
+			int i = n.indexOf("\n");
+			if(i == -1)
+				name = n;
+			else
+				name = n.substring(0, i);
+			if(name.toLowerCase().startsWith("struggle"))
+			{
+				pp = Integer.MAX_VALUE;
+				power = 50;
+				accuracy = 100;
+				type = Type.None;
+				recoilPercent = 25;
+			}
+			else
+				SQLHandler.queryMove(this);
 		}
 		else
-			SQLHandler.queryMove(this);
+		{
+			shortname = n;
+			SQLHandler.queryMoveShortname(this);
+		}
 		if(	name.toLowerCase().contains("overheat") || name.toLowerCase().contains("draco meteor") || //Hardcode these for now.
 			name.toLowerCase().contains("leaf storm") || name.toLowerCase().contains("psycho boost"))
-			{
-				System.out.println(name+" lowers the SpA stat by two.");
-				boosts[Stat.SpA.toInt()] = -2;
-				boostChance = 1;
-			}
+		{
+			System.out.println(name+" lowers the SpA stat by two.");
+			boosts[Stat.SpA.toInt()] = -2;
+			boostChance = 1;
+		}
 	}
 	
 	public void onMoveUsed(Pokemon enemy, int damageDone, boolean wasCrit)
 	{
 		//Called when this move is used.
+		if(!user.isAlive())
+			return;
+		if(shortname != null);
+		{
+			if(shortname.equals("stealthrock"))
+			{
+				user.getEnemy().getTeam().addHazard(EntryHazard.StealthRock);
+			}
+			else if(shortname.equals("toxicspikes"))
+			{
+				user.getEnemy().getTeam().addHazard(EntryHazard.ToxicSpikes);
+			}
+			else if(shortname.equals("spikes"))
+			{
+				user.getEnemy().getTeam().addHazard(EntryHazard.Spikes);
+			}
+		}
 		if(user.getItem() != null && user.getItem().name.toLowerCase().startsWith("choice"))
 		{
 			user.setLockedInto(this);
@@ -112,13 +139,15 @@ public class Move {
 				else
 					pp--;
 			}
-			
 		}
 		else
 		{
 			try 
 			{
-				pp = showdown.getMoveRemainingPP(name);
+				if(name.toLowerCase().startsWith("hidden power"))
+					pp = showdown.getMoveRemainingPP("Hidden Power");
+				else
+					pp = showdown.getMoveRemainingPP(name);
 			} 
 			catch (Exception e) 
 			{

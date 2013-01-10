@@ -64,6 +64,9 @@ public class Team {
 	private double teamDefModifier = 1;
 	private double teamSpDModifier = 1;
 	private static Battle battle;
+	private EntryHazard stealthRocks = EntryHazard.StealthRock;
+	private EntryHazard spikes = EntryHazard.Spikes;
+	private EntryHazard toxicSpikes = EntryHazard.ToxicSpikes;
 	
 	private ShowdownHelper showdown;
 	
@@ -304,5 +307,71 @@ public class Team {
 		
 		showdown = clone.showdown;
 		
+	}
+
+	/**
+	 * Returns our Pokemon team as an array.
+	 * @return (Pokemon[]): Our Pokemon team.
+	 */
+	public Pokemon[] getPokemonTeam() 
+	{
+		return team;
+	}
+	
+	/**
+	 * Adds entry hazards to our side.
+	 * @param hazard (EntryHazard): The Entry Hazard to add.
+	 */
+	public void addHazard(EntryHazard hazard) 
+	{
+		if(hazard == stealthRocks && stealthRocks.getLevel() <= 1)
+			stealthRocks.addLevel();
+		else if(hazard == spikes && spikes.getLevel() <= 3)
+			spikes.addLevel();
+		else if(hazard == toxicSpikes && toxicSpikes.getLevel() <= 2)
+			toxicSpikes.addLevel();
+	}
+	
+	/**
+	 * Checks if we have the maximum amount of an entry hazard on our side.
+	 * @param hazard (EntryHazard): The hazard to check.
+	 * @return TRUE if we've maxed it out, else FALSE.
+	 */
+	public boolean hasMaxHazard(EntryHazard hazard)
+	{
+		if(hazard == stealthRocks)
+		{
+			if(stealthRocks.getLevel() == 1)
+				return true;
+			else return false;
+		}
+		else if(hazard == spikes)
+		{
+			if(spikes.getLevel() == 3)
+				return true;
+			else return false;
+		}
+		else if(hazard == toxicSpikes)
+		{
+			if(toxicSpikes.getLevel() == 2)
+				return true;
+			else return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Returns the number of Pokemon still alive.
+	 * @return (int): The number of still-living Pokemon.
+	 */
+	public int getAliveCount() 
+	{
+		int aliveCount = 0;
+		for(int i = 0; i < team.length; i++)
+		{
+			if(team[i] == null || team[i].isAlive())
+				aliveCount++;
+		}
+		return aliveCount;
 	}
 }

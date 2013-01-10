@@ -41,13 +41,75 @@ public class SQLHandler {
 		{
 			try
 			{
-				PreparedStatement s = conn.prepareStatement("SELECT type, power, accuracy, category, pp, target, priority, move.desc FROM move WHERE name= ? ORDER BY name ASC");
+				PreparedStatement s = conn.prepareStatement("SELECT type, power, shortname, accuracy, category, pp, target, priority, move.desc FROM move WHERE name= ? ORDER BY name ASC");
 				s.setString(1, move);
 				s.executeQuery();
 				ResultSet rs = s.getResultSet ();
 				int count = 0;
 				while (rs.next ())
 				{
+					m.type = Type.fromSQL(rs.getString("type"));
+					m.shortname = rs.getString("shortname");
+					m.power = Integer.parseInt(rs.getString("power"));
+					String moveCategory = rs.getString("category");
+					if(moveCategory.toLowerCase().startsWith("special"))
+						m.setType(MoveType.Special);
+					else if(moveCategory.toLowerCase().startsWith("status"))
+						m.setType(MoveType.Status);
+					else
+						m.setType(MoveType.Physical);
+					m.accuracy = Integer.parseInt(rs.getString("accuracy"));
+					m.pp = Integer.parseInt(rs.getString("pp"));
+					m.target = Target.fromString(rs.getString("target"));
+					m.priority = Integer.parseInt(rs.getString("priority"));
+					/*if(move.startsWith("Hidden Power")) //TODO: Hidden Power calculation.
+						{
+						moveType = hiddenPower.get(1).toString();
+						movePower = hiddenPower.get(0).toString();
+						}*/
+					System.out.println (
+					"Name: " + m.name +
+					", Shortname: " + m.shortname +
+					", Type: " + m.type +
+					", Power: " + m.power +
+					", Move Type: "+m.getType() +
+					", Accuracy: " + m.accuracy +
+					", Target: " + m.target +
+					", Priority: " + m.priority +
+					", PP: " + m.pp);
+					++count;
+				}
+				rs.close ();
+				s.close ();
+				System.out.println (count + " rows were retrieved");
+			}
+			catch (SQLException e)
+			{
+				System.err.println ("Error message: " + e.getMessage ());
+				System.err.println ("Error number: " + e.getErrorCode ());
+			}
+		}
+		closeConnection();
+		return m;
+	}
+	
+	public static Move queryMoveShortname(Move m)
+	{
+		openConnection();
+		String move = m.shortname;
+		System.out.println("Sending SQL query for move: " + move);
+		//ArrayList hiddenPower = HiddenPowerCalculator.calculateHiddenPower();
+		{
+			try
+			{
+				PreparedStatement s = conn.prepareStatement("SELECT type, power, name, accuracy, category, pp, target, priority, move.desc FROM move WHERE shortname= ? ORDER BY name ASC");
+				s.setString(1, move);
+				s.executeQuery();
+				ResultSet rs = s.getResultSet ();
+				int count = 0;
+				while (rs.next ())
+				{
+					m.name = rs.getString("name");
 					m.type = Type.fromSQL(rs.getString("type"));
 					m.power = Integer.parseInt(rs.getString("power"));
 					String moveCategory = rs.getString("category");
@@ -67,7 +129,8 @@ public class SQLHandler {
 						movePower = hiddenPower.get(0).toString();
 						}*/
 					System.out.println (
-						"Name: " + move +
+						"Name: " + m.name +
+						", Shortname: " + m.shortname +
 						", Type: " + m.type +
 						", Power: " + m.power +
 						", Move Type: "+m.getType() +

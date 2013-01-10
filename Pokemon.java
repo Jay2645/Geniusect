@@ -10,6 +10,7 @@ package geniusect;
 
 
 import geniusect.abilities.Ability;
+import geniusect.ai.GenericAI;
 import geniusect.ai.GeniusectAI;
 
 import java.util.ArrayList;
@@ -96,11 +97,8 @@ public class Pokemon {
 			team = enemy.enemyTeam;
 		if(team.getTeamID() == 0 && showdown != null)
 		{
-			List<String> ourMoves = showdown.getMoves(name);
-			for(int m = 0; m < ourMoves.size(); m++)
-			{
-				addMove(ourMoves.get(m));
-			}
+			List<String> ourMoves = showdown.getMoves(name,true);
+			addMove(ourMoves, true);
 		}
 		if(team.getActive() == null)
 			onSendOut();
@@ -121,10 +119,10 @@ public class Pokemon {
 			ability.onSendOut();
 		if(moveset[0] == null && team.getTeamID() == 0 && showdown != null)
 		{
-			List<String> ourMoves = showdown.getMoves(name);
+			List<String> ourMoves = showdown.getMoves(name,true);
 			for(int m = 0; m < ourMoves.size(); m++)
 			{
-				addMove(ourMoves.get(m));
+				addMove(ourMoves.get(m),true);
 			}
 		}
 		damage(Change.calculateSwitchDamagePercent(this));
@@ -162,7 +160,7 @@ public class Pokemon {
 			onWithdraw();
 		if(showdown != null && team.getTeamID() == 1)
 			return null;
-		Change change = GeniusectAI.onPokemonDeath(this);
+		Change change = GenericAI.onPokemonDeath(this);
 		if(change == null)
 			return null;
 		else return change.switchTo;
@@ -321,6 +319,45 @@ public class Pokemon {
 	 */
 	public Move addMove(String moveName)
 	{
+		return addMove(moveName, false);
+	}
+	
+	public Move[] addMove(List<String> moveNames, boolean shortname)
+	{
+		String[] moveArray = new String[4];
+		moveArray = moveNames.toArray(moveArray);
+		return addMove(moveArray, shortname);
+	}
+	
+	public Move[] addMove(String[] moveNames, boolean shortname)
+	{
+		if(moveNames.length > 4)
+			return null;
+		for(int i = 0; i < moveNames.length; i++)
+		{
+			moveset[i] = new Move(moveNames[i], this, shortname);
+		}
+		return moveset;
+	}
+	
+	/**
+	 * Adds the move to the moveset. If the moveset is full, returns null. If the move is already in the moveset, returns that move.
+	 * @param moveName (String): The name of the move we're trying to add.
+	 * @param shortname (boolean): Is this the move's short name?
+	 * @return The move to add.
+	 */
+	public Move addMove(String moveName, boolean shortname)
+	{
+		System.out.println(moveName);
+		for(int n = 0; n < moveset.length; n++)
+		{
+			//First iterate through all moves to make sure we don't already have this move.
+			if(moveset[n] != null && moveset[n].name.toLowerCase().startsWith(moveName.toLowerCase()))
+			{
+				System.out.println(name+" already has move "+moveName+"!");
+				return moveset[n];
+			}
+		}
 		Move move = null;
 		if(team == null)
 			team = Team.lookupPokemon(this);
@@ -328,29 +365,18 @@ public class Pokemon {
 			showdown = team.getShowdown();
 		for(int i = 0; i < moveset.length; i++)
 		{
-			for(int n = 0; n < moveset.length; n++)
-			{
-				//First iterate through all moves to make sure we don't already have this move.
-				if(moveset[n] != null && moveset[n].name.toLowerCase().startsWith(moveName.toLowerCase()))
-				{
-					System.out.println(name+" already has move "+moveName+"!");
-					move = moveset[n];
-					return move;
-				}
-			}
 			if(moveset[i] == null || moveset[i].name.toLowerCase().startsWith("struggle") && !moveName.toLowerCase().startsWith("struggle"))
 			{
 				System.err.println("Adding "+moveName+" to "+name+"'s move list.");
-				moveset[i] = new Move(moveName,this);
+				Throwable t = new Throwable();
+				t.printStackTrace();
+				moveset[i] = new Move(moveName,this,shortname);
 				if(moveName.toLowerCase().startsWith("hidden power"))
 				{
 					HiddenPower hp = new HiddenPower(moveset[i]); 
 					if(moveset[i].type == null)
 					{
-						if(team != null && team.getTeamID() == 0 && showdown != null)
-						{
-							//TODO: Get HP type from Showdown.
-						}
+
 					}
 					else
 					{
@@ -964,6 +990,14 @@ public class Pokemon {
 	 */
 	public boolean canSwitch() 
 	{
+		if(showdown != null)
+		{
+			try
+			{
+				canSwitch = showdown.isTrapped();
+			}
+			catch(Exception e){}
+		}
 		return canSwitch;
 	}
 
@@ -1020,5 +1054,52 @@ public class Pokemon {
 				return moveset[i];
 		}
 		return null;
+	}
+
+	/**
+	 * Sets our HP to the specified values.
+	 * @param hp (int): Our current HP value.
+	 * @param maxHP (int): Our maximum HP value.
+	 */
+	public void setHP(int hp, int maxHP) 
+	{
+		if(hp > 0)
+			alive = true;
+		else
+			alive = false;
+		if(maxHP != 100)
+		{
+			fullHP = maxHP;
+			stats[Stat.HP.toInt()] = maxHP;
+		}
+		double hpAmount = (hp / maxHP) * 100;
+		hpPercent = (int)Math.round(hpAmount);
+	}
+
+	/**
+	 * Clears our move list.
+	 */
+	public void clearMoves() 
+	{
+		moveset = new Move[4];
+	}
+
+	/**
+	 * Adds a new move to our move list.
+	 * @param newMove (Move): The move to add.
+	 */
+	public void addMove(Move newMove) 
+	{
+		for(int i = 0; i < moveset.length; i++)
+		{
+			if(moveset[i] != null)
+			{
+				if(moveset[i].name.equals(newMove.name))
+					break;
+				else continue;
+			}
+			moveset[i] = newMove;
+			break;
+		}
 	}
 }
