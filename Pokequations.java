@@ -345,6 +345,7 @@ public class Pokequations {
 		Team attackerTeam = attacker.getTeam();
 		int aliveCount = attackerTeam.getAliveCount();
 		Point damage = new Point(Integer.MIN_VALUE, Integer.MIN_VALUE + 1);
+		double adjustedDamage = 0;
 		for(int i = 0; i < moveset.length; i++)
 		{
 			if(moveset[i] == null || moveset[i].disabled || moveset[i].pp <= 0)
@@ -353,8 +354,6 @@ public class Pokequations {
 					System.err.println(attacker.getName()+"'s move "+moveset[i]+" is null or disabled!");
 				continue;
 			}
-			if(use != null)
-				System.out.println("Move to use is "+use.name);
 			System.out.println("This move is "+moveset[i].name);
 			if(aliveCount > 1)
 			{
@@ -378,7 +377,7 @@ public class Pokequations {
 			{
 				use = moveset[i];
 				damage = calculateDamage(attacker, moveset[i],defender);
-				System.out.println("Assigning "+moveset[i].name+" to be the used move to prevent Struggle call.");
+				adjustedDamage = (damage.x * use.accuracy) / 100;
 				continue;
 			}
 			Point moveDamage;
@@ -386,11 +385,16 @@ public class Pokequations {
 				moveDamage = moveset[i].getProjectedDamage(defender);
 			else
 				moveDamage = calculateDamage(attacker, moveset[i],defender);
-			if(moveDamage.y > damage.y)
+			//Factor in accuracy.
+			int moveAdjustedDamage = (moveDamage.x * moveset[i].accuracy) / 100;
+			//If we're going to kill something regardless of what move we use, use the move with the higher accuracy.
+			//TODO: Also factor in stat drops and PP counts.
+			if(	moveAdjustedDamage > adjustedDamage && (damage.x < defender.getHealth() || moveset[i].accuracy > use.accuracy) || 
+				(moveAdjustedDamage == adjustedDamage || moveDamage.x >= defender.getHealth()) && moveset[i].accuracy > use.accuracy)
 			{
 				damage=moveDamage;
 				use = moveset[i];
-				System.out.println(moveset[i].name+" had a better score than the previous; using it.");
+				adjustedDamage = moveAdjustedDamage;
 			}
 		}
 		if(use == null)

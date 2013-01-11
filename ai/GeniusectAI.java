@@ -297,6 +297,8 @@ public class GeniusectAI {
 		}
 		else
 		{
+			Throwable t = new Throwable();
+			t.printStackTrace();
 			lossCount++;
 			print("GG. :(");
 		}
