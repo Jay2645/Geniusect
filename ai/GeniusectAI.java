@@ -173,7 +173,8 @@ public class GeniusectAI {
 	{
 		print("Geniusect by rissole and Team Forretress found a battle. Session battle count: "+battleCount);
 		print("Hello! You are playing against Geniusect, an AI early in development, coded in Java.");
-		print("If you suspect I'm not responding, feel free to hit 'Kick Inactive Player.'");
+		print("Source code is available at https://github.com/Jay2645/geniusect-ai and https://github.com/rissole/geniusect-selenium .");
+		//print("If you suspect I'm not responding, feel free to hit 'Kick Inactive Player.'");
 	}
 	
 	/**
@@ -303,8 +304,25 @@ public class GeniusectAI {
 			print("GG. :(");
 		}
 		print("Geniusect win : loss ratio is "+winCount +" : "+ lossCount);
+		try 
+		{
+			Thread.sleep(1000);
+		} 
+		catch (InterruptedException e) {}
 		if(showdown != null)
+		{
 			showdown.leaveBattle();
+		}
+		try 
+		{
+			Thread.sleep(5000);
+		} 
+		catch (InterruptedException e) {}
+		battle = new Battle(showdown);
+        if(!battle.findBattle())
+        	return;
+        battleCount++;
+        battle.battleStart();
 	}
 	
 	/**
@@ -333,6 +351,7 @@ public class GeniusectAI {
 			}
 			ourBestMove = bestMoveUs;
 			System.out.println("We are going to try to use "+bestMoveUs.name+ " ("+bestMoveUs.power+" BP, "+bestMoveUs.type+", "+bestMoveUs.moveType+").");
+			
 			System.out.println("Enemy Speed: "+enemyActive.boostedStat(Stat.Spe));
 			System.out.println("Our Speed: "+ourActive.boostedStat(Stat.Spe));
 			Move bestMoveThem = Pokequations.bestMove(ourActive, enemyActive, ourBestMove);
@@ -468,9 +487,9 @@ public class GeniusectAI {
 		if(simulating)
 			return;
 		//System.err.println("Sending text to chat.");
-		//if(showdown == null)
+		if(showdown == null)
 			System.out.println("BATTLE CHAT: "+text);
-		/*else
+		else
 		{
 			try
 			{
@@ -479,10 +498,10 @@ public class GeniusectAI {
 			catch (Exception e)
 			{
 				System.err.println("Could not print to chat!");
-				System.err.println("Chat log: "+text);
+				System.err.println("Message we attempted: "+text);
 				System.err.println("Exception data: "+e);
 			}
-		}*/
+		}
 	}
 	
 	/**

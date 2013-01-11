@@ -200,7 +200,7 @@ public class SQLHandler {
 		System.out.println("Sending SQL query for Pokemon: " + currentPokemon);
 		try
 		{
-			PreparedStatement s = conn.prepareStatement("SELECT pokemon.name, atk, spa, def, spd, hp, spe, pokemon.type0, pokemon.type1, tier FROM pokemon WHERE pokemon.name = ? ORDER BY name ASC");
+			PreparedStatement s = conn.prepareStatement("SELECT pokemon.name, atk, spa, def, spd, hp, spe, pokemon.type0, pokemon.type1, ability0, ability1, abilityDW, tier FROM pokemon WHERE pokemon.name = ? ORDER BY name ASC");
 			s.setString(1, currentPokemon); // set the first '?' in the query to the currentPokemon
 			s.executeQuery(); // everything else is the same from here on
 			ResultSet rs = s.getResultSet();
@@ -231,6 +231,9 @@ public class SQLHandler {
 				p.setTier(rs.getString("tier"));
 				types[0] = rs.getString("type0");
 				types[1] = rs.getString("type1");
+				p.setPossibleAbilties(rs.getString("ability0"), 0);
+				p.setPossibleAbilties(rs.getString("ability1"), 1);
+				p.setPossibleAbilties(rs.getString("abilityDW"), 2);
 				++count;
 			}
 			p.setType(Type.fromSQL(types[0]), Type.fromSQL(types[1]));

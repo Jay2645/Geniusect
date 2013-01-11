@@ -345,17 +345,18 @@ public class Pokequations {
 		Team attackerTeam = attacker.getTeam();
 		int aliveCount = attackerTeam.getAliveCount();
 		Point damage = new Point(Integer.MIN_VALUE, Integer.MIN_VALUE + 1);
+		Weather weather = attacker.getTeam().getBattle().getWeather();
 		double adjustedDamage = 0;
 		for(int i = 0; i < moveset.length; i++)
 		{
-			if(moveset[i] == null || moveset[i].disabled || moveset[i].pp <= 0)
+			if(moveset[i] == null || moveset[i].disabled || moveset[i].pp <= 0 || moveset[i].shortname.equals("solarbeam") && weather != Weather.Sun)
 			{
 				if(attacker.getTeam().getTeamID() == 0)
 					System.err.println(attacker.getName()+"'s move "+moveset[i]+" is null or disabled!");
 				continue;
 			}
 			System.out.println("This move is "+moveset[i].name);
-			if(aliveCount > 1)
+			if(aliveCount > 1 && !defender.checkAbilities("Magic Bounce"))
 			{
 				if(moveset[i].shortname.equals("stealthrock"))
 				{

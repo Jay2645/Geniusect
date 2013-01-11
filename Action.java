@@ -41,34 +41,17 @@ public class Action
 				GeniusectAI.lastTurnLogic();
 			boolean switched = findPokemon(lastTurn);
 			findMove(lastTurn);
-			/*for(int t = 0; t < 2; t++)
+			for(int t = 0; t < 2; t++)
 			{
 				Team team = battle.getTeam(t);
-				String owner = team.getUsername();
-				Pokemon[] pokeTeam = team.getPokemon();
-				for(int i = 0; i < pokeTeam.length; i++)
+				if(team.getActive() != null)
 				{
-					pokeTeam[i].setHP(showdown.getHP(pokeTeam[i].name, owner), showdown.getMaxHP(pokeTeam[i].getName(), owner));
-					if(t == 0)
-					{
-						List<String> ourMoves = showdown.getMoves(name,true);
-						for(int m = 0; m < ourMoves.size(); m++)
-						{
-							Move newMove = new Move(ourMoves.get(m),pokeTeam[i],true);
-							try
-							{
-								newMove.pp = showdown.getMoveRemainingPP(newMove.name);
-							}
-							catch(Exception e)
-							{
-								e.printStackTrace();
-							}
-							pokeTeam[i].clearMoves();
-							pokeTeam[i].addMove(newMove);
-						}
-					}
+					String owner = team.getUsername();
+					Status status = Status.statusFromString(showdown.getStatus(team.getActive().getName(), owner));
+					if(status != null)
+						team.getActive().inflictStatus(status);
 				}
-			}*/
+			}
 			if(switched && this instanceof Attack)
 			{
 				Attack a = (Attack)this;
@@ -334,9 +317,9 @@ public class Action
 		ShowdownHelper showdown = battle.getShowdown();
 		if(failure.attempt == 0)
 		{
-			GeniusectAI.print("Here's what I tried to do:");
-			GeniusectAI.lastTurnLogic();
-			GeniusectAI.print(Battle.criticalErrors);
+			//GeniusectAI.print("Here's what I tried to do:");
+			//GeniusectAI.lastTurnLogic();
+			//GeniusectAI.print(Battle.criticalErrors);
 			Battle.criticalErrors = Battle.criticalErrors + "\n" + e;
 			e.printStackTrace();
 		}

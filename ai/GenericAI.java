@@ -325,7 +325,7 @@ public class GenericAI {
 			else
 			{
 				Change c = new Change(change,battle);
-				c.say("Oh my god! You killed "+dead.getName()+"! D:");
+				//c.say("Oh my god! You killed "+dead.getName()+"! D:");
 				c.deploy();
 				return c;
 			}

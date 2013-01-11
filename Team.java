@@ -7,6 +7,8 @@ package geniusect;
 
 import java.util.List;
 
+import org.bouncycastle.jcajce.provider.symmetric.AES.OFB;
+
 import com.seleniumhelper.ShowdownHelper;
 
 public class Team {
@@ -339,19 +341,19 @@ public class Team {
 	 */
 	public boolean hasMaxHazard(EntryHazard hazard)
 	{
-		if(hazard == stealthRocks)
+		if(hazard == EntryHazard.StealthRock)
 		{
 			if(stealthRocks.getLevel() == 1)
 				return true;
 			else return false;
 		}
-		else if(hazard == spikes)
+		else if(hazard == EntryHazard.Spikes)
 		{
 			if(spikes.getLevel() == 3)
 				return true;
 			else return false;
 		}
-		else if(hazard == toxicSpikes)
+		else if(hazard == EntryHazard.ToxicSpikes)
 		{
 			if(toxicSpikes.getLevel() == 2)
 				return true;
@@ -373,5 +375,21 @@ public class Team {
 				aliveCount++;
 		}
 		return aliveCount;
+	}
+
+	/**
+	 * Returns the number of entry hazards of a certain type.
+	 * @param hazard (EntryHazard): The hazard to check.
+	 * @return (int): The number of EntryHazards of type <i>hazard</i>.
+	 */
+	public int getHazardCount(EntryHazard hazard) 
+	{
+		if(hazard == EntryHazard.StealthRock)
+			return stealthRocks.getLevel();
+		else if(hazard == EntryHazard.Spikes)
+			return spikes.getLevel();
+		else if(hazard == EntryHazard.ToxicSpikes)
+			return toxicSpikes.getLevel();
+		else return 0;
 	}
 }

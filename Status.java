@@ -8,6 +8,25 @@ public enum Status {
 		damage = d;
 	}
 	
+	public static Status statusFromString(String sts)
+	{
+		if(sts == null)
+			return Status.None;
+		if(sts.equals("tox"))
+			return Status.ToxicPoison;
+		else if(sts.equals("psn"))
+			return Status.Poison;
+		else if(sts.equals("par"))
+			return Status.Paralysis;
+		else if(sts.equals("frz"))
+			return Status.Freeze;
+		else if(sts.equals("brn"))
+			return Status.Burn;
+		else if(sts.equals("slp"))
+			return Status.Sleep;
+		else return Status.None;
+	}
+	
 	private double damage;
 	private Pokemon victim;
 	public int turnsActive = 0;

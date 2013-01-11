@@ -59,7 +59,34 @@ public class Change extends Action {
 	{
 		//Returns the amount of entry hazard damage an incoming Pokemon will take.
 		int damage = 0;
-		//TODO: Calculate entry hazard damage.
+		Team team = change.getTeam();
+		int rocksCount = team.getHazardCount(EntryHazard.StealthRock);
+		int spikesCount = team.getHazardCount(EntryHazard.Spikes);
+		int toxicSpikesCount = team.getHazardCount(EntryHazard.ToxicSpikes);
+		if(rocksCount > 0)
+		{
+			double effectiveness = Pokequations.damageMultiplier(Type.Rock, change.getTypes());
+			if(effectiveness == 4)
+				damage += 50;
+			else if(effectiveness == 2)
+				damage += 25;
+			else if(effectiveness == 1)
+				damage += 13;
+			else if(effectiveness == 0.5)
+				damage += 6;
+			else
+				damage += 3;
+		}
+		if(spikesCount > 0)
+		{
+			if(spikesCount == 1)
+				damage += 13;
+			else if(spikesCount == 2)
+				damage += 17;
+			else
+				damage += 25;
+		}
+		//TODO: Toxic Spikes.
 		return damage;
 	}
 	

@@ -29,6 +29,10 @@ public class Pokemon {
 	protected int level = 100;
 	protected Type[] types = {Type.None, Type.None};
 	protected Ability ability;
+	
+	protected Ability abilityZero;
+	protected Ability abilityOne;
+	protected Ability abilityDW;
 	protected Nature nature = Nature.Hardy;
 	protected Tier tier;
 	
@@ -368,8 +372,6 @@ public class Pokemon {
 			if(moveset[i] == null || moveset[i].name.toLowerCase().startsWith("struggle") && !moveName.toLowerCase().startsWith("struggle"))
 			{
 				System.err.println("Adding "+moveName+" to "+name+"'s move list.");
-				Throwable t = new Throwable();
-				t.printStackTrace();
 				moveset[i] = new Move(moveName,this,shortname);
 				if(moveName.toLowerCase().startsWith("hidden power"))
 				{
@@ -1101,5 +1103,33 @@ public class Pokemon {
 			moveset[i] = newMove;
 			break;
 		}
+	}
+	
+	public void setPossibleAbilties(String abilityName, int abilityIndex)
+	{
+		if(abilityName == null)
+			return;
+		if(abilityIndex == 0)
+			abilityZero = new Ability(abilityName,this);
+		else if(abilityIndex == 1)
+			abilityOne = new Ability(abilityName, this);
+		else if(abilityIndex == 2)
+			abilityDW = new Ability(abilityName, this);
+	}
+	
+	public boolean checkAbilities(String abilityName)
+	{
+		if(ability == null)
+		{
+			if(abilityZero != null && abilityZero.getName().toLowerCase().startsWith(abilityName.toLowerCase()))
+				return true;
+			if(abilityOne != null && abilityOne.getName().toLowerCase().startsWith(abilityName.toLowerCase()))
+				return true;
+			if(abilityDW != null && abilityDW.getName().toLowerCase().startsWith(abilityName.toLowerCase()))
+				return true;		
+		}
+		else if(ability.getName().toLowerCase().startsWith(abilityName.toLowerCase()))
+			return true;
+		return false;
 	}
 }
