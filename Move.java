@@ -50,7 +50,7 @@ public class Move {
 		type = clone.type;
 		target = clone.target;
 		boosts = clone.boosts;
-		moveType = clone.getType();
+		moveType = clone.getMoveType();
 		isContact = clone.getContact();
 		boostChance = clone.boostChance;
 		recoilPercent = clone.recoilPercent;
@@ -288,7 +288,7 @@ public class Move {
 		user.giveBoosts(boost, boosts[boost.toInt()]);
 	}
 	
-	public MoveType getType()
+	public MoveType getMoveType()
 	{
 		return moveType;
 	}
@@ -297,7 +297,7 @@ public class Move {
 	 * Sets this move's MoveType to the specified MoveType.
 	 * @param type (MoveType): The new MoveType.
 	 */
-	public void setType(MoveType type)
+	public void setMoveType(MoveType type)
 	{
 		moveType = type;
 	}

@@ -12,6 +12,7 @@ import java.util.Map;
 
 import geniusect.Battle;
 import geniusect.Damage;
+import geniusect.Move;
 import geniusect.Pokemon;
 import geniusect.ai.GeniusectAI;
 
@@ -116,10 +117,16 @@ public class Ability {
 			ability.onSendOut();
 	}
 	
-	public void onFaint()
+	public void onFaint(Pokemon attacker, Move move)
 	{
 		if(ability != null)
-			ability.onFaint();	
+			ability.onFaint(attacker, move);	
+	}
+	
+	public void onMoveUsed(Pokemon attacker, Move move)
+	{
+		if(ability != null)
+			ability.onMoveUsed(attacker, move);
 	}
 	
 	public void onNewTurn()
@@ -168,6 +175,7 @@ public class Ability {
 		abilityDex.put("levitate", new AbilityLevitate());
 		abilityDex.put("flash fire", new AbilityFlashFire());
 		abilityDex.put("drought", new AbilityDrought());
+		abilityDex.put("magic bounce", new AbilityMagicBounce());
 	}
 	/*
 	{
@@ -862,32 +870,6 @@ public class Ability {
 				}
 			},
 			rating = 1,
-		},
-		"magicbounce": {
-			shortDesc: "This Pokemon blocks certain status moves and uses the move itself.",
-			onAllyTryFieldHit: function(target, user, move) {
-				if (target === user) return;
-				if (typeof move.isBounceable === 'undefined') {
-						move.isBounceable = !!(move.category === 'Status' && (move.status || move.boosts || move.volatileStatus === 'confusion' || move.forceSwitch));
-				}
-				if (move.target !== 'foeSide' && target !== this.effectData.target) {
-					return;
-				}
-				if (move.hasBounced) {
-					return;
-				}
-				if (move.isBounceable) {
-					var newMove = this.getMoveCopy(move.id);
-					newMove.hasBounced = true;
-					this.add('-activate', target, 'ability: Magic Bounce', newMove, '[of] '+user);
-					this.moveHit(user, target, newMove);
-					return null;
-				}
-			},
-			effect: {
-				duration: 1
-			},
-			rating = 5,
 		},
 		"magicguard": {
 			shortDesc: "This Pokemon can only be damaged by direct attacks.",

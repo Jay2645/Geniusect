@@ -5,6 +5,8 @@
 
 package geniusect;
 
+import geniusect.abilities.Ability;
+
 import java.sql.*;
 
 public class SQLHandler {
@@ -53,11 +55,11 @@ public class SQLHandler {
 					m.power = Integer.parseInt(rs.getString("power"));
 					String moveCategory = rs.getString("category");
 					if(moveCategory.toLowerCase().startsWith("special"))
-						m.setType(MoveType.Special);
+						m.setMoveType(MoveType.Special);
 					else if(moveCategory.toLowerCase().startsWith("status"))
-						m.setType(MoveType.Status);
+						m.setMoveType(MoveType.Status);
 					else
-						m.setType(MoveType.Physical);
+						m.setMoveType(MoveType.Physical);
 					m.accuracy = Integer.parseInt(rs.getString("accuracy"));
 					m.pp = Integer.parseInt(rs.getString("pp"));
 					m.target = Target.fromString(rs.getString("target"));
@@ -72,7 +74,7 @@ public class SQLHandler {
 					", Shortname: " + m.shortname +
 					", Type: " + m.type +
 					", Power: " + m.power +
-					", Move Type: "+m.getType() +
+					", Move Type: "+m.getMoveType() +
 					", Accuracy: " + m.accuracy +
 					", Target: " + m.target +
 					", Priority: " + m.priority +
@@ -114,11 +116,11 @@ public class SQLHandler {
 					m.power = Integer.parseInt(rs.getString("power"));
 					String moveCategory = rs.getString("category");
 					if(moveCategory.toLowerCase().startsWith("special"))
-						m.setType(MoveType.Special);
+						m.setMoveType(MoveType.Special);
 					else if(moveCategory.toLowerCase().startsWith("status"))
-						m.setType(MoveType.Status);
+						m.setMoveType(MoveType.Status);
 					else
-						m.setType(MoveType.Physical);
+						m.setMoveType(MoveType.Physical);
 					m.accuracy = Integer.parseInt(rs.getString("accuracy"));
 					m.pp = Integer.parseInt(rs.getString("pp"));
 					m.target = Target.fromString(rs.getString("target"));
@@ -133,7 +135,7 @@ public class SQLHandler {
 						", Shortname: " + m.shortname +
 						", Type: " + m.type +
 						", Power: " + m.power +
-						", Move Type: "+m.getType() +
+						", Move Type: "+m.getMoveType() +
 						", Accuracy: " + m.accuracy +
 						", Target: " + m.target +
 						", Priority: " + m.priority +
@@ -206,6 +208,9 @@ public class SQLHandler {
 			ResultSet rs = s.getResultSet();
 			int count = 0;
 			String[] types = new String[2];
+			Ability abilityZero = null;
+			Ability abilityOne = null;
+			Ability abilityDW = null;
 			while (rs.next ())
 			{
 				if(!rs.getString("name").toLowerCase().startsWith(currentPokemon.toLowerCase()))
@@ -231,9 +236,9 @@ public class SQLHandler {
 				p.setTier(rs.getString("tier"));
 				types[0] = rs.getString("type0");
 				types[1] = rs.getString("type1");
-				p.setPossibleAbilties(rs.getString("ability0"), 0);
-				p.setPossibleAbilties(rs.getString("ability1"), 1);
-				p.setPossibleAbilties(rs.getString("abilityDW"), 2);
+				abilityZero = p.setPossibleAbilties(rs.getString("ability0"), 0);
+				abilityOne = p.setPossibleAbilties(rs.getString("ability1"), 1);
+				abilityDW = p.setPossibleAbilties(rs.getString("abilityDW"), 2);
 				++count;
 			}
 			p.setType(Type.fromSQL(types[0]), Type.fromSQL(types[1]));
@@ -242,10 +247,16 @@ public class SQLHandler {
 				System.err.println(currentPokemon+" is not in the SQL table!");
 				Battle.criticalErrors = Battle.criticalErrors + "\n"+currentPokemon+" is not in the SQL table!";
 			}
-			System.out.println("Pokemon name: " + currentPokemon);
-			System.out.println("Pokemon type 1: " + p.getType(0));
-			System.out.println("Pokemon type 2: " + p.getType(1));
+			System.out.println("Pokemon name: " + 			currentPokemon);
+			System.out.println("Pokemon type 1: " + 		p.getType(0));
+			System.out.println("Pokemon type 2: " + 		p.getType(1));
 			System.out.println("Tier: " + 					p.getTier());
+			if(abilityZero != null)
+				System.out.println("Ability 0: " +			abilityZero.getName());
+			if(abilityOne != null)
+				System.out.println("Ability 1: " +			abilityOne.getName());
+			if(abilityDW != null)
+				System.out.println("Ability DW: " +			abilityDW.getName());			
 			System.out.println("Base HP: " + 				p.getBaseStat(Stat.HP));
 			System.out.println("Base Attack: " + 			p.getBaseStat(Stat.Atk));
 			System.out.println("Base Defense: " + 			p.getBaseStat(Stat.Def));

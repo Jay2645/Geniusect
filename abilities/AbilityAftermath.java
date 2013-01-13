@@ -12,7 +12,7 @@ public class AbilityAftermath extends Ability {
 	}
 	public void onFaint(Pokemon attacker, Move move)
 	{
-		if (move.getType() != MoveType.Status && move.isContact) {
+		if (move.getMoveType() != MoveType.Status && move.isContact) {
 			onFaintDamage = new Damage(user.getFullHP()/4, attacker);
 		}
 	}

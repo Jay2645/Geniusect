@@ -39,6 +39,7 @@ public class Pokemon {
 	protected ArrayList<Type> immunities = new ArrayList<Type>();
 	
 	protected Move[] moveset = new Move[4];
+	protected Move lastMoveUsed = null;
 	
 	protected int[] base = {0,0,0,0,0,0};
 	protected int[] ivs = {31,31,31,31,31,31};
@@ -156,7 +157,7 @@ public class Pokemon {
 		//Called when the Pokemon dies.
 		hpPercent = 0;
 		if(ability != null)
-			ability.onFaint();
+			ability.onFaint(enemy,enemy.lastMoveUsed);
 		System.err.println(name+" has died!");
 		alive = false;
 		enemy.onKill(name);
@@ -202,7 +203,10 @@ public class Pokemon {
 			enemy = enemyTeam.getActive(); //So we can properly simulate the right team.
 		Move moveUsed = addMove(n);
 		if(moveUsed != null)
+		{
 			moveUsed.onMoveUsed(enemy, damageDone, crit);
+			lastMoveUsed = moveUsed;
+		}
 		if(ability != null)
 			ability.onNewTurn();
 		status.onNewTurn();
@@ -1105,16 +1109,26 @@ public class Pokemon {
 		}
 	}
 	
-	public void setPossibleAbilties(String abilityName, int abilityIndex)
+	public Ability setPossibleAbilties(String abilityName, int abilityIndex)
 	{
 		if(abilityName == null)
-			return;
+			return null;
 		if(abilityIndex == 0)
+		{
 			abilityZero = new Ability(abilityName,this);
+			return abilityZero;
+		}
 		else if(abilityIndex == 1)
+		{
 			abilityOne = new Ability(abilityName, this);
+			return abilityOne;
+		}
 		else if(abilityIndex == 2)
+		{
 			abilityDW = new Ability(abilityName, this);
+			return abilityDW;
+		}
+		return null;
 	}
 	
 	public boolean checkAbilities(String abilityName)
@@ -1131,5 +1145,22 @@ public class Pokemon {
 		else if(ability.getName().toLowerCase().startsWith(abilityName.toLowerCase()))
 			return true;
 		return false;
+	}
+
+	/**
+	 * Returns the specified ability (0: Ability0, 1: Ability1, 2: AbilityDW). 
+	 * Returns NULL if it does not have that ability or <i>i</i> is out of range.
+	 * @param i (int): The index to look up.
+	 * @return (Ability): The ability at this slot.
+	 */
+	public Ability getAbility(int i) 
+	{
+		if(i == 0)
+			return abilityZero;
+		if(i == 1)
+			return abilityOne;
+		if(i == 2)
+			return abilityDW;
+		else return null;
 	}
 }

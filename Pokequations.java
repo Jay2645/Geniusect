@@ -10,7 +10,7 @@ public class Pokequations {
 	
 	public static Point calculateDamagePercent(Pokemon attacker, Move move, Pokemon defender)
 	{
-		if(move.getType() == MoveType.Status)
+		if(move.getMoveType() == MoveType.Status)
 			return new Point(0,0);
 		Point percentage = calculateDamage(attacker, move, defender);
 		if(defender.getFullHP() == 0)
@@ -34,7 +34,7 @@ public class Pokequations {
 	{
 		//System.out.println("Calculating the damage if "+attacker.name+" uses "+move.name+" on "+defender.name);
 		//Returns damage dealt as a point(minValue, maxValue).
-		if(move.getType() == MoveType.Status)
+		if(move.getMoveType() == MoveType.Status)
 			return new Point(0,0);
 		else if(move.name.toLowerCase().startsWith("seismic toss") || move.name.toLowerCase().startsWith("night shade"))
 			return new Point(attacker.getLevel(), attacker.getLevel());
@@ -52,7 +52,7 @@ public class Pokequations {
 		int defenseStat;
 		int level = attacker.getLevel();
 		Battle battle = attacker.getTeam().getBattle();
-		if(move.getType() == MoveType.Special)
+		if(move.getMoveType() == MoveType.Special)
 		{
 			attackStat = attacker.boostedStat(Stat.SpA);
 			defenseStat = defender.boostedStat(Stat.SpD);
@@ -112,7 +112,7 @@ public class Pokequations {
 		int attackPower = move.power;
 		int level = attacker.getLevel();
 		int defenseStat;
-		if(move.getType() == MoveType.Special)
+		if(move.getMoveType() == MoveType.Special)
 			defenseStat = defender.boostedStat(Stat.SpD);
 		else
 			defenseStat = defender.boostedStat(Stat.Def);
@@ -266,7 +266,8 @@ public class Pokequations {
 			int turnsUntilDead = turnsToKill(attacker.getHealth(), projectedDamageFromEnemy + moveset[i].recoilPercent);
 			if(turnsUntilDead > 1)
 			{
-				if(moveset[i].name.toLowerCase().startsWith("counter") && enemyMove.getType() == MoveType.Physical || moveset[i].name.toLowerCase().startsWith("mirror coat") && enemyMove.getType() == MoveType.Special)
+				if(	moveset[i].name.toLowerCase().startsWith("counter") && enemyMove.getMoveType() == MoveType.Physical || 
+					moveset[i].name.toLowerCase().startsWith("mirror coat") && enemyMove.getMoveType() == MoveType.Special)
 				{
 					int projectedDamageLower = enemyMove.getProjectedDamage(attacker).x * 2;
 					int projectedDamageUpper = enemyMove.getProjectedDamage(attacker).y * 2;
@@ -275,7 +276,8 @@ public class Pokequations {
 					moveset[i].getProjectedPercent(defender).x = defender.hpToPercent(projectedDamageLower);
 					moveset[i].getProjectedPercent(defender).y = defender.hpToPercent(projectedDamageUpper);
 				}
-				else if(moveset[i].name.toLowerCase().startsWith("counter") && enemyMove.getType() != MoveType.Physical || moveset[i].name.toLowerCase().startsWith("mirror coat") && enemyMove.getType() != MoveType.Special)
+				else if(moveset[i].name.toLowerCase().startsWith("counter") && enemyMove.getMoveType() != MoveType.Physical || 
+						moveset[i].name.toLowerCase().startsWith("mirror coat") && enemyMove.getMoveType() != MoveType.Special)
 				{
 					moveset[i].getProjectedDamage(defender).x = 0;
 					moveset[i].getProjectedDamage(defender).y = 0;
@@ -343,10 +345,12 @@ public class Pokequations {
 				return use;
 		}
 		Team attackerTeam = attacker.getTeam();
-		int aliveCount = attackerTeam.getAliveCount();
+		int attackerAliveCount = attackerTeam.getAliveCount();
+		int defenderAliveCount = defender.getTeam().getAliveCount();
 		Point damage = new Point(Integer.MIN_VALUE, Integer.MIN_VALUE + 1);
 		Weather weather = attacker.getTeam().getBattle().getWeather();
 		double adjustedDamage = 0;
+		int health = attacker.getHealth();
 		for(int i = 0; i < moveset.length; i++)
 		{
 			if(moveset[i] == null || moveset[i].disabled || moveset[i].pp <= 0 || moveset[i].shortname.equals("solarbeam") && weather != Weather.Sun)
@@ -356,7 +360,7 @@ public class Pokequations {
 				continue;
 			}
 			System.out.println("This move is "+moveset[i].name);
-			if(aliveCount > 1 && !defender.checkAbilities("Magic Bounce"))
+			if(attackerAliveCount > 1 && defenderAliveCount > 2 && !defender.checkAbilities("Magic Bounce") && health > 60)
 			{
 				if(moveset[i].shortname.equals("stealthrock"))
 				{

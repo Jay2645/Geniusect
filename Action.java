@@ -106,7 +106,6 @@ public class Action
 				b.newTurn();
 			else if(nextTurn == TurnEndStatus.SWITCH)
 			{
-				b.getTeam(0).getActive().onDie();
 				b.newTurn();
 			}
 			else if (nextTurn == TurnEndStatus.WON)
