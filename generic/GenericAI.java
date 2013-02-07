@@ -83,7 +83,11 @@ public class GenericAI {
 		if(nextTurn instanceof Change)
 		{
 			battle = b;
-			((Change)nextTurn).changeTo(Change.bestCounter(b.getTeam(0, true).getPokemonTeam(), b.getTeam(0, true).getPokemonTeam()[0]));
+			Team user = b.getTeam(0, true);
+	    	Pokemon active = user.getActive();
+	    	Pokemon changeTo = Change.bestCounter(active, user.getPokemonTeam(), b.getTeam(1, true).getPokemonTeam()[0]);
+	    	if(!((Change)nextTurn).changeTo(changeTo))
+	    		return bestMove(b);
 			return nextTurn;
 		}
 		else
@@ -121,8 +125,8 @@ public class GenericAI {
 		if(switchConfidence > 0 || ourBestMove == null)
 		{
 			Change sanityCheck = new Change();
-			sanityCheck.changeTo(Change.bestChange(user, userTeam, opponent, Pokequations.bestMove(opponent, user)));
-			if(switchConfidence <= 2 && ourBestMove != null)
+			boolean canChange = sanityCheck.changeTo(Change.bestChange(user, userTeam, opponent, Pokequations.bestMove(opponent, user)));
+			if(switchConfidence <= 2 && ourBestMove != null || !canChange)
 			{
 				ourBestMove = Pokequations.bestMove(user, opponent);
 				theirBestMove = Pokequations.bestMove(opponent,user,ourBestMove);
@@ -131,8 +135,8 @@ public class GenericAI {
 				turnsToKillUs = Pokequations.turnsToKill(user.getHealth(), theirBestMove.getProjectedPercent(user).y + ourBestMove.recoilPercent);
 				turnsToKillThem = Pokequations.turnsToKill(opponent.getHealth(), ourBestMove.getProjectedPercent(opponent).x + theirBestMove.recoilPercent);
 				deficit = turnsToKillUs - turnsToKillThem;
-				if(switchDamage < 0 || deficit > 0 || deficit == 0 && (ourBestMove.priority > theirBestMove.priority 
-												|| ourBestMove.priority == theirBestMove.priority && user.isFasterThan(opponent)))
+				if(!canChange || switchDamage < 0 || deficit > 0 || deficit == 0 && (ourBestMove.priority > theirBestMove.priority 
+																	|| ourBestMove.priority == theirBestMove.priority && user.isFasterThan(opponent)))
 				{
 					doNext = new Attack();
 					((Attack)doNext).setMove(ourBestMove,user,opponent,battle);
@@ -168,12 +172,17 @@ public class GenericAI {
 				}
 				else if(sanityCheck.switchTo.getName().toLowerCase().startsWith(user.getName().toLowerCase()))
 				{
-					Pokemon attemptTwo = Change.bestCounter(userTeam, opponent,user);
+					Pokemon attemptTwo = Change.bestCounter(user, userTeam, opponent);
 					if(ourBestMove == null || attemptTwo != null && !attemptTwo.getName().startsWith(user.getName()))
 					{
 						System.err.println("Switch found, but it was us. Second attempt produced "+attemptTwo.getName());
 						doNext = new Change();
-						((Change)doNext).changeTo(attemptTwo);
+						if(!((Change)doNext).changeTo(attemptTwo))
+						{
+							System.err.println("Cannot change to "+attemptTwo.getName());
+							doNext = new Attack();
+							((Attack)doNext).setMove(ourBestMove,user,opponent,battle);
+						}
 					}
 					else
 					{

@@ -173,6 +173,7 @@ public class GeniusectAI {
 	{
 		if(battle == null)
 			return null;
+		
 		if(nextTurn instanceof Change)
 		{
 			us = battle.getTeam(teamID, true);

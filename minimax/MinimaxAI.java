@@ -143,8 +143,8 @@ public class MinimaxAI {
 				continue;
 			MinimaxNode child = new MinimaxNode(node);
 			Change change = new Change();
-			change.changeTo(team[i]);
-			child.setDecision(change);
+			if(change.changeTo(team[i]))
+				child.setDecision(change);
 			//System.out.println("Swtiching to "+ourTeam[i].getName());
 		}
 	}
@@ -157,8 +157,8 @@ public class MinimaxAI {
 				continue;
 			MinimaxNode child = new MinimaxNode(node);
 			Change change = new Change();
-			change.changeTo(team[i]);
-			child.setDecision(change);
+			if(change.changeTo(team[i]))
+				child.setDecision(change);
 			scoreTree(node, node.getDepth() - 1);
 		}
 	}
