@@ -5,6 +5,7 @@ import geniusectai.minimax.MinimaxAI;
 import geniusectsim.abilities.Ability;
 import geniusectsim.actions.Action;
 import geniusectsim.actions.Attack;
+import geniusectsim.actions.Change;
 import geniusectsim.battle.Battle;
 import geniusectsim.battle.Team;
 import geniusectsim.battle.Type;
@@ -128,7 +129,8 @@ public class GeniusectAI {
 	
 	protected static int turnsToSimulate = 150;
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) 
+	{
 		Simulator.isLocal(false);
 		newBattle();
     }
@@ -138,6 +140,22 @@ public class GeniusectAI {
 		battle = Simulator.onNewBattle();
 		battleCount++;
 		toDo = Simulator.battleStartAction();
+		playMatch();
+		/*swapSides();
+		toDo = new Change();
+		simulate(toDo);
+		Simulator.newTurn(toDo);*/
+	}
+	
+	private static void playMatch()
+	{
+		while(toDo != null)
+		{
+			toDo = simulate(toDo);
+			toDo = Simulator.newTurn(toDo);
+			newTurn(us);
+		}
+		gameOver(Simulator.getWon());
 	}
 	
 	/**
@@ -149,6 +167,30 @@ public class GeniusectAI {
 		Simulator.print("Hello! You are playing against Geniusect, an AI early in development, coded in Java.");
 		Simulator.print("Source code is available at https://github.com/Jay2645/geniusect-ai and https://github.com/rissole/geniusect-selenium .");
 		//Simulator.print("If you suspect I'm not responding, feel free to hit 'Kick Inactive Player.'");
+	}
+	
+	private static Action simulate(Action nextTurn)
+	{
+		if(battle == null)
+			return null;
+		if(nextTurn instanceof Change)
+		{
+			us = battle.getTeam(teamID, true);
+	    	enemy = battle.getTeam(enemyID, true);
+			simulating = true;
+			Simulator.toggleSend(!simulating);
+			if(generic)
+				nextTurn = GenericAI.bestMove(battle, nextTurn);
+			else if(miniMax || genetic)
+				nextTurn = MinimaxAI.minimax(4, battle, nextTurn);
+			//else if(genetic)
+				//nextTurn = TODO;
+			simulating = false;
+			Simulator.toggleSend(!simulating);
+			return nextTurn;
+		}
+		else
+			return simulate();
 	}
 	
 	/**
@@ -286,10 +328,10 @@ public class GeniusectAI {
 		}
 	}
 	
-	public static void newTurn(Team t)
+	public static Action newTurn(Team t)
 	{
 		if(battle == null || t.getActive() == null)
-			return;
+			return null;
 		int turnNumber = battle.getTurnCount();
 		System.out.println("\n\n\n");
 		if(simulating)
@@ -303,9 +345,9 @@ public class GeniusectAI {
 		{
 			toDo = simulate();
 			if(toDo == null) //Should never happen, but I'm being pedantic.
-				return;
+				return null;
 		}
-		Simulator.newTurn(toDo);
+		return toDo;
 	}
 	
 	/**
@@ -343,6 +385,8 @@ public class GeniusectAI {
 	{
 		Pokemon usActive = us.getActive();
 		Pokemon enemyActive = enemy.getActive();
+		if(usActive == null)
+			return;
 		System.out.println("I am using a "+usActive.getName()+" with "+usActive.getHealth()+"% health.");
 		if(enemyActive == null)
 			return;

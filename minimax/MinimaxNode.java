@@ -88,6 +88,8 @@ public class MinimaxNode
 	/**Is this node the root node?*/
 	private boolean isRoot = false;
 	
+	private int depth = 0;
+	
 	/**
 	 The parent of all nodes used in the Minimax algorithm.
 	* @param b (Battle): The Battle this node is going to use.
@@ -96,10 +98,11 @@ public class MinimaxNode
  	* @see geniusect.ai.MinimaxAI#minimaxAlgorithm(MinimaxNode, int)
  	* @see	{@link http://en.wikipedia.org/wiki/Minimax}
 	*/
-	public MinimaxNode(Battle b, int depth) 
+	public MinimaxNode(Battle b, int d) 
 	{
 		battle = new Battle(b);
 		battle.setTurnCount(0);
+		depth = d;
 		ourTeam = battle.getTeam(0, true).getPokemon();
 		enemyTeam = battle.getTeam(1, true).getPokemon();
 		int ourID = battle.getTeam(0, true).getActive().getID();
@@ -124,7 +127,8 @@ public class MinimaxNode
 	protected MinimaxNode(MinimaxNode parent)
 	{
 		count = parent.count + 1;
-		if(parent.createChildren)
+		depth = parent.getDepth() - 1;
+		if(parent.createChildren && depth >= 0)
 		{
 			setValues(parent);
 			if(ourActive != null)
@@ -231,8 +235,6 @@ public class MinimaxNode
 		}
 	}
 	
-	
-	
 	/*
 	 * 
 	 * GETTER AND SETTER METHODS
@@ -297,6 +299,15 @@ public class MinimaxNode
 			enemyActive = switchingTo;
 		}
 		decision = action;
+	}
+	
+	/**
+	 * Gets how many more nodes to create.
+	 * @return (int): How deep to make this tree.
+	 */
+	protected int getDepth()
+	{
+		return depth;
 	}
 	
 	/**

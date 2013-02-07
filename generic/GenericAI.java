@@ -72,6 +72,26 @@ public class GenericAI {
 	
 	/**
 	 * Generic (scripted) behavior. 
+	 * Finds the best move we can use or Pokemon we can switch to and returns the Action.
+	 * @param b (Battle): The Battle to use.
+	 * @param nextTurn (Action): The type of move the next turn must be (Change or Attack).
+	 * @return Action - the best choice in the given circumstance using generic scripted logic.
+	 * @see geniusect.ai.GeniusectAI#bestMove(Pokemon, Pokemon)
+	 */
+	public static Action bestMove(Battle b, Action nextTurn) 
+	{
+		if(nextTurn instanceof Change)
+		{
+			battle = b;
+			((Change)nextTurn).changeTo(Change.bestCounter(b.getTeam(0, true).getPokemonTeam(), b.getTeam(0, true).getPokemonTeam()[0]));
+			return nextTurn;
+		}
+		else
+			return bestMove(b);
+	}
+	
+	/**
+	 * Generic (scripted) behavior. 
 	 * Finds the best move we can use or Pokemon we can switch to considering our current team and returns the Action.
 	 * @param user - the user's Pokemon.
 	 * @param opponent - the opponent's Pokemon.

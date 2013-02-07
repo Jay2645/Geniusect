@@ -45,6 +45,27 @@ public class MinimaxAI {
 		return decision;
 	}
 	
+	public static Action minimax(int depth, Battle b, Action nextTurn) 
+	{
+		if(nextTurn instanceof Change)
+		{
+			MinimaxNode decide = new MinimaxNode(battle, depth);
+			createChangeNodes(b.getTeam(0, true).getPokemonTeam(), "", decide, depth);
+			minimaxAlgorithm(decide, depth);
+			Action decision;
+			if(decide.getDecision() == null)
+			{
+				System.err.println("The minimax result was null! Switching to generic logic.");
+				decision = GenericAI.bestMove(battle, nextTurn);
+			}
+			else
+				decision = decide.getDecision();
+			GeniusectAI.markDecision(decision);
+			return decision;
+		}
+		else return minimax(depth, b);
+	}
+	
 	/**
 	 * Scores a minimax branch.
 	 * @param node - The MinimaxNode to add branches to.
@@ -60,7 +81,6 @@ public class MinimaxAI {
 		Pokemon ourActive = new Pokemon(node.getOurPokemon());
 		Pokemon enemyActive = new Pokemon(node.getEnemyPokemon());
 		Pokemon[] ourTeam = node.getOurTeam();
-		Battle nodeBattle = node.getBattle();
 		if(depth <= 0 || enemyActive == null)
 		{
 			System.out.println("Collecting children.");
@@ -75,31 +95,19 @@ public class MinimaxAI {
 			}
 			return;
 		}
-		Move[] ourMoves = ourActive.getMoveset();
 		System.out.println("Node generation: "+node.getCount()+"; iterations to go: "+depth);
 		System.out.println(	"Player "+node.getPlayer() + " is using "+ourActive.getName() +
 							" ("+ourActive.getHealth()+" hp).");
-		GeniusectAI.newTurn(ourActive.getTeam());
-		for(int i = 0; i < 4; i++)
+		Action doNext = GeniusectAI.newTurn(ourActive.getTeam());
+		if(doNext == null)
+			return;
+		if(doNext instanceof Attack)
 		{
-			if(ourMoves[i] == null || ourMoves[i].disabled || ourMoves[i].pp <= 0)
-				continue;
-			MinimaxNode child = new MinimaxNode(node);
-			Attack attack = new Attack();
-			attack.setMove(ourMoves[i],new Pokemon(ourActive),new Pokemon(enemyActive),nodeBattle);
-			child.setDecision(attack);
-			//System.out.println("Using "+ourMoves[i].name);
+			Battle nodeBattle = node.getBattle();
+			Move[] ourMoves = ourActive.getMoveset();
+			createAttackNodes(ourMoves, ourActive, enemyActive, nodeBattle, node);
 		}
-		for(int i = 0; i < 6; i++)
-		{
-			if(ourTeam[i] == null || ourTeam[i].nameIs(ourActive.getName()) || !ourTeam[i].isAlive())
-				continue;
-			MinimaxNode child = new MinimaxNode(node);
-			Change change = new Change();
-			change.changeTo(ourTeam[i]);
-			child.setDecision(change);
-			//System.out.println("Swtiching to "+ourTeam[i].getName());
-		}
+		createChangeNodes(ourTeam, ourActive.getName(), node);
 		MinimaxNode[] children = node.getChildren();
 		//if(children == null)
 			//return score(node);
@@ -111,6 +119,48 @@ public class MinimaxAI {
 			scoreTree(children[i], depth - 1);
 		}
 		//return node;
+	}
+	
+	private static void createAttackNodes(Move[] moveset, Pokemon ourActive, Pokemon enemyActive, Battle nodeBattle, MinimaxNode node)
+	{
+		for(int i = 0; i < 4; i++)
+		{
+			if(moveset[i] == null || moveset[i].disabled || moveset[i].pp <= 0)
+				continue;
+			MinimaxNode child = new MinimaxNode(node);
+			Attack attack = new Attack();
+			attack.setMove(moveset[i],new Pokemon(ourActive),new Pokemon(enemyActive),nodeBattle);
+			child.setDecision(attack);
+			//System.out.println("Using "+ourMoves[i].name);
+		}
+	}
+	
+	private static void createChangeNodes(Pokemon[] team, String activeName, MinimaxNode node)
+	{
+		for(int i = 0; i < 6; i++)
+		{
+			if(team[i] == null || team[i].nameIs(activeName) || !team[i].isAlive())
+				continue;
+			MinimaxNode child = new MinimaxNode(node);
+			Change change = new Change();
+			change.changeTo(team[i]);
+			child.setDecision(change);
+			//System.out.println("Swtiching to "+ourTeam[i].getName());
+		}
+	}
+	
+	private static void createChangeNodes(Pokemon[] team, String activeName, MinimaxNode node, int depth)
+	{
+		for(int i = 0; i < 6; i++)
+		{
+			if(team[i] == null || team[i].nameIs(activeName) || !team[i].isAlive())
+				continue;
+			MinimaxNode child = new MinimaxNode(node);
+			Change change = new Change();
+			change.changeTo(team[i]);
+			child.setDecision(change);
+			scoreTree(node, node.getDepth() - 1);
+		}
 	}
 	/*private static MinimaxNode scoreTree(MinimaxNode node, int depth)
 	{
